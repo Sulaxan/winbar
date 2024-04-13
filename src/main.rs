@@ -6,6 +6,8 @@ use std::{
 };
 
 use color::Color;
+use component::static_text::StaticTextComponent;
+use winbar::Winbar;
 use windows::{
     core::{h, w},
     Win32::{
@@ -52,4 +54,13 @@ const FOREGROUND: Color = Color::Rgb {
     b: 80,
 };
 
-fn main() {}
+fn main() {
+    let mut winbar = Winbar::new();
+    winbar.set_default_styles();
+    winbar.add_component(
+        winbar::ComponentLocation::LEFT,
+        Box::new(StaticTextComponent::new("yea yeayeaeayea".to_owned())),
+    );
+    winbar.update();
+    winbar.listen();
+}

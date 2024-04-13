@@ -3,10 +3,11 @@ use std::sync::atomic::Ordering;
 use windows::{
     core::w,
     Win32::{
-        Foundation::{COLORREF, HWND, LPARAM, LRESULT, WPARAM},
+        Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, WPARAM},
         Graphics::Gdi::{
-            CreateFontIndirectW, CreatePen, CreateSolidBrush, GetDC, ReleaseDC, SelectObject,
-            SetBkColor, SetTextColor, FONT_QUALITY, FW_NORMAL, LOGFONTW, PROOF_QUALITY, PS_SOLID,
+            BeginPaint, CreateFontIndirectW, CreatePen, CreateSolidBrush, DrawTextW, EndPaint,
+            GetDC, ReleaseDC, SelectObject, SetBkColor, SetTextColor, DT_CENTER, DT_SINGLELINE,
+            DT_VCENTER, FONT_QUALITY, FW_NORMAL, LOGFONTW, PAINTSTRUCT, PROOF_QUALITY, PS_SOLID,
         },
         System::{
             LibraryLoader::GetModuleHandleW,
@@ -15,16 +16,31 @@ use windows::{
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, PostQuitMessage,
             RegisterClassW, SetLayeredWindowAttributes, ShowWindow, TranslateMessage, LWA_COLORKEY,
-            MSG, SW_SHOWDEFAULT, WM_DESTROY, WM_QUIT, WNDCLASSW, WS_EX_LAYERED, WS_EX_TOOLWINDOW,
+            MSG, SW_SHOWDEFAULT, WM_DESTROY, WM_PAINT, WNDCLASSW, WS_EX_LAYERED, WS_EX_TOOLWINDOW,
             WS_POPUP, WS_VISIBLE,
         },
     },
 };
 
-use crate::{BACKGROUND, FOREGROUND, HEIGHT, TRANSPARENT_COLOR, WIDTH};
+use crate::{
+    component::Component, windows_api::WindowsApi, BACKGROUND, FOREGROUND, HEIGHT,
+    TRANSPARENT_COLOR, WIDTH,
+};
+
+pub enum ComponentLocation {
+    LEFT,
+    MIDDLE,
+    RIGHT,
+}
+
+struct WinbarComponent {
+    location: ComponentLocation,
+    component: Box<dyn Component>,
+}
 
 pub struct Winbar {
     hwnd: HWND,
+    components: Vec<WinbarComponent>,
 }
 
 impl Winbar {
@@ -74,7 +90,10 @@ impl Winbar {
     pub fn new() -> Self {
         let hwnd = Self::create_window();
 
-        Self { hwnd }
+        Self {
+            hwnd,
+            components: Vec::new(),
+        }
     }
 
     pub fn listen(&self) {
@@ -112,6 +131,27 @@ impl Winbar {
         }
     }
 
+    pub fn add_component(&mut self, location: ComponentLocation, component: Box<dyn Component>) {
+        self.components.push(WinbarComponent {
+            location,
+            component,
+        })
+    }
+
+    pub fn update(&self) {
+        self.components.iter().for_each(|component| {
+            component.component.draw(
+                self.hwnd,
+                &mut RECT {
+                    left: 0,
+                    top: 0,
+                    right: 100,
+                    bottom: 20,
+                },
+            )
+        })
+    }
+
     pub extern "system" fn window_proc(
         hwnd: HWND,
         msg: u32,
@@ -120,6 +160,23 @@ impl Winbar {
     ) -> LRESULT {
         unsafe {
             match msg {
+                WM_PAINT => {
+                    let mut paint: PAINTSTRUCT = PAINTSTRUCT::default();
+                    let hdc = BeginPaint(hwnd, &mut paint);
+                    DrawTextW(
+                        hdc,
+                        &mut WindowsApi::str_to_u16_slice("test"),
+                        &mut RECT {
+                            left: 0,
+                            top: 0,
+                            right: 100,
+                            bottom: 20,
+                        },
+                        DT_SINGLELINE | DT_VCENTER | DT_CENTER,
+                    );
+
+                    EndPaint(hwnd, &mut paint);
+                }
                 WM_DESTROY => {
                     PostQuitMessage(0);
                 }
