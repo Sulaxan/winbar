@@ -1,38 +1,17 @@
 use std::{
-    borrow::BorrowMut,
-    ffi::{CStr, OsStr, OsString},
-    os::windows::ffi::{OsStrExt, OsStringExt},
-    sync::atomic::{AtomicI32, AtomicUsize, Ordering},
+    sync::{atomic::AtomicI32, mpsc::channel, Arc, Mutex},
+    thread,
+    time::Duration,
 };
 
 use color::Color;
 use component::static_text::StaticTextComponent;
-use winbar::Winbar;
-use windows::{
-    core::{h, w},
-    Win32::{
-        Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, WPARAM},
-        Graphics::Gdi::{
-            BeginPaint, CreateFontIndirectW, CreateFontW, CreatePen, CreateSolidBrush, DrawTextExW,
-            DrawTextW, EndPaint, FillRect, GetDC, GetSysColor, GetSysColorBrush, ReleaseDC,
-            RoundRect, SelectObject, SetBkColor, SetTextColor, COLOR_GRADIENTACTIVECAPTION,
-            COLOR_HOTLIGHT, COLOR_MENUTEXT, COLOR_WINDOW, DT_CENTER, DT_END_ELLIPSIS, DT_NOCLIP,
-            DT_RIGHT, DT_SINGLELINE, DT_VCENTER, FONT_QUALITY, FW_BOLD, FW_NORMAL, HBRUSH,
-            LOGFONTW, PAINTSTRUCT, PROOF_QUALITY, PS_SOLID,
-        },
-        System::{
-            LibraryLoader::GetModuleHandleW,
-            Threading::{GetStartupInfoW, STARTUPINFOW},
-        },
-        UI::WindowsAndMessaging::{
-            CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetMessageW,
-            PostQuitMessage, RegisterClassW, SetLayeredWindowAttributes, SetWindowLongW,
-            ShowWindow, TranslateMessage, GWL_STYLE, LWA_ALPHA, LWA_COLORKEY, MSG, SHOW_WINDOW_CMD,
-            SW_SHOWDEFAULT, WINDOW_EX_STYLE, WINDOW_STYLE, WM_CLOSE, WM_DESTROY, WM_PAINT,
-            WNDCLASSW, WNDPROC, WS_BORDER, WS_EX_DLGMODALFRAME, WS_EX_LAYERED, WS_EX_TOOLWINDOW,
-            WS_EX_TRANSPARENT, WS_OVERLAPPEDWINDOW, WS_POPUP, WS_POPUPWINDOW, WS_VISIBLE,
-        },
-    },
+use lazy_static::lazy_static;
+use winbar::{Winbar, WinbarAction};
+use windows::Win32::{Foundation::HWND, System::Console::SetConsoleCtrlHandler};
+use windows::Win32::{
+    Foundation::{BOOL, LPARAM, WPARAM},
+    UI::WindowsAndMessaging::{DestroyWindow, PostMessageW, WM_CLOSE},
 };
 
 pub mod color;
@@ -54,13 +33,54 @@ const FOREGROUND: Color = Color::Rgb {
     b: 80,
 };
 
+lazy_static! {
+    static ref WINBAR: Arc<Mutex<HWND>> = Arc::new(Mutex::new(HWND(0)));
+}
+
 fn main() {
-    let mut winbar = Winbar::new();
-    winbar.set_default_styles();
-    winbar.add_component(
-        winbar::ComponentLocation::LEFT,
-        Box::new(StaticTextComponent::new("yea yeayeaeayea".to_owned())),
-    );
-    winbar.update();
-    winbar.listen();
+    let (send, recv) = channel::<WinbarAction>();
+
+    thread::spawn(move || {
+        let mut winbar = Winbar::new(recv);
+        {
+            let mut hwnd = WINBAR.lock().unwrap();
+            *hwnd = winbar.hwnd();
+        }
+
+        winbar.set_default_styles();
+        winbar.add_component(
+            winbar::ComponentLocation::LEFT,
+            Box::new(StaticTextComponent::new("TEST".to_owned())),
+        );
+        winbar.listen();
+    });
+
+    unsafe {
+        SetConsoleCtrlHandler(Some(ctrl_handler), true).unwrap();
+    }
+
+    loop {
+        println!("Sending update window....");
+        if send.send(WinbarAction::UpdateWindow).is_ok() {
+            thread::sleep(Duration::from_secs(1));
+        } else {
+            break;
+        }
+    }
+}
+
+pub extern "system" fn ctrl_handler(ctrltype: u32) -> BOOL {
+    match ctrltype {
+        CTRL_C_EVENT => {
+            WINBAR
+                .lock()
+                .and_then(|hwnd| unsafe {
+                    PostMessageW(*hwnd, WM_CLOSE, WPARAM(0), LPARAM(0)).unwrap();
+                    Ok(())
+                })
+                .unwrap();
+            true.into()
+        }
+        _ => false.into(),
+    }
 }

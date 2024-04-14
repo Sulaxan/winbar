@@ -1,23 +1,21 @@
-use std::sync::atomic::Ordering;
+use std::sync::{atomic::Ordering, mpsc::Receiver, Mutex};
 
 use windows::{
     core::w,
     Win32::{
-        Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, WPARAM},
+        Foundation::{BOOL, COLORREF, HWND, LPARAM, LRESULT, RECT, WPARAM},
         Graphics::Gdi::{
             BeginPaint, CreateFontIndirectW, CreatePen, CreateSolidBrush, DrawTextW, EndPaint,
             GetDC, ReleaseDC, SelectObject, SetBkColor, SetTextColor, DT_CENTER, DT_SINGLELINE,
             DT_VCENTER, FONT_QUALITY, FW_NORMAL, LOGFONTW, PAINTSTRUCT, PROOF_QUALITY, PS_SOLID,
         },
         System::{
+            Console::{SetConsoleCtrlHandler, CTRL_C_EVENT},
             LibraryLoader::GetModuleHandleW,
-            Threading::{GetStartupInfoW, STARTUPINFOW},
+            Threading::{GetStartupInfoW, GetThreadId, STARTUPINFOW},
         },
         UI::WindowsAndMessaging::{
-            CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, PostQuitMessage,
-            RegisterClassW, SetLayeredWindowAttributes, ShowWindow, TranslateMessage, LWA_COLORKEY,
-            MSG, SW_SHOWDEFAULT, WM_DESTROY, WM_PAINT, WNDCLASSW, WS_EX_LAYERED, WS_EX_TOOLWINDOW,
-            WS_POPUP, WS_VISIBLE,
+            CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, PeekMessageW, PostQuitMessage, PostThreadMessageW, RegisterClassW, SetLayeredWindowAttributes, ShowWindow, TranslateMessage, LWA_COLORKEY, MSG, PM_REMOVE, SW_SHOWDEFAULT, WM_CLOSE, WM_DESTROY, WM_PAINT, WM_QUIT, WNDCLASSW, WS_EX_LAYERED, WS_EX_TOOLWINDOW, WS_POPUP, WS_VISIBLE
         },
     },
 };
@@ -27,6 +25,7 @@ use crate::{
     TRANSPARENT_COLOR, WIDTH,
 };
 
+#[derive(Clone, Copy, Debug)]
 pub enum ComponentLocation {
     LEFT,
     MIDDLE,
@@ -38,9 +37,14 @@ struct WinbarComponent {
     component: Box<dyn Component>,
 }
 
+pub enum WinbarAction {
+    UpdateWindow,
+}
+
 pub struct Winbar {
     hwnd: HWND,
-    components: Vec<WinbarComponent>,
+    channel_receiver: Receiver<WinbarAction>,
+    components: Mutex<Vec<WinbarComponent>>,
 }
 
 impl Winbar {
@@ -87,23 +91,47 @@ impl Winbar {
         }
     }
 
-    pub fn new() -> Self {
+    pub fn new(recv: Receiver<WinbarAction>) -> Self {
         let hwnd = Self::create_window();
 
         Self {
             hwnd,
-            components: Vec::new(),
+            channel_receiver: recv,
+            components: Mutex::new(Vec::new()),
         }
     }
 
+    pub fn hwnd(&self) -> HWND {
+        return HWND(self.hwnd.0);
+    }
+
     pub fn listen(&self) {
-        unsafe {
-            let mut msg = MSG::default();
-            while GetMessageW(&mut msg, self.hwnd, 0, 0).as_bool() {
-                TranslateMessage(&mut msg);
-                DispatchMessageW(&mut msg);
+        let mut msg = MSG::default();
+
+        loop {
+            let action = self.channel_receiver.try_recv();
+            if action.is_ok() {
+                match action.unwrap() {
+                    WinbarAction::UpdateWindow => {
+                        self.update();
+                    }
+                }
+            }
+
+            unsafe {
+                if PeekMessageW(&mut msg, self.hwnd, 0, 0, PM_REMOVE).as_bool() {
+                    TranslateMessage(&mut msg);
+                    DispatchMessageW(&mut msg);
+                }
+            }
+
+            if msg.message == WM_CLOSE {
+                break;
             }
         }
+
+        println!("Winbar shutting down...");
+        //TODO: shut down the components
     }
 
     pub fn set_default_styles(&self) {
@@ -132,20 +160,22 @@ impl Winbar {
     }
 
     pub fn add_component(&mut self, location: ComponentLocation, component: Box<dyn Component>) {
-        self.components.push(WinbarComponent {
+        let mut components = self.components.lock().unwrap();
+        components.push(WinbarComponent {
             location,
             component,
         })
     }
 
-    pub fn update(&self) {
-        self.components.iter().for_each(|component| {
+    fn update(&self) {
+        let components = self.components.lock().unwrap();
+        components.iter().for_each(|component| {
             component.component.draw(
                 self.hwnd,
                 &mut RECT {
                     left: 0,
                     top: 0,
-                    right: 100,
+                    right: 1000,
                     bottom: 20,
                 },
             )
@@ -160,23 +190,6 @@ impl Winbar {
     ) -> LRESULT {
         unsafe {
             match msg {
-                WM_PAINT => {
-                    let mut paint: PAINTSTRUCT = PAINTSTRUCT::default();
-                    let hdc = BeginPaint(hwnd, &mut paint);
-                    DrawTextW(
-                        hdc,
-                        &mut WindowsApi::str_to_u16_slice("test"),
-                        &mut RECT {
-                            left: 0,
-                            top: 0,
-                            right: 100,
-                            bottom: 20,
-                        },
-                        DT_SINGLELINE | DT_VCENTER | DT_CENTER,
-                    );
-
-                    EndPaint(hwnd, &mut paint);
-                }
                 WM_DESTROY => {
                     PostQuitMessage(0);
                 }
