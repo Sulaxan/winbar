@@ -1,11 +1,8 @@
-use windows::{
-    core::w,
-    Win32::{
-        Foundation::{HWND, RECT, SIZE},
-        Graphics::Gdi::{
-            DrawTextW, GetDC, GetTextExtentPoint32W, ReleaseDC, RoundRect, DT_CENTER,
-            DT_SINGLELINE, DT_VCENTER,
-        },
+use windows::Win32::{
+    Foundation::{HWND, RECT, SIZE},
+    Graphics::Gdi::{
+        DrawTextW, GetDC, GetTextExtentPoint32W, ReleaseDC, RoundRect, DT_CENTER, DT_SINGLELINE,
+        DT_VCENTER,
     },
 };
 
@@ -54,7 +51,7 @@ impl Component for StaticTextComponent {
         }
     }
 
-    fn start(&mut self, hwnd: HWND, rect: &mut RECT) {
+    fn start(&mut self, _hwnd: HWND, _rect: &mut RECT) {
         todo!()
     }
 

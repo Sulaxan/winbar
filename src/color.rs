@@ -7,7 +7,7 @@ impl Color {
     pub fn to_single_rgb(&self) -> u32 {
         match self {
             Self::Rgb { r, g, b } => 0x00 | b << 16 | g << 8 | r,
-            Self::Hex(hex) => unimplemented!("not yet implemented"),
+            Self::Hex(_hex) => unimplemented!("not yet implemented"),
         }
     }
 }

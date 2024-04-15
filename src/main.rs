@@ -8,7 +8,10 @@ use color::Color;
 use component::static_text::StaticTextComponent;
 use lazy_static::lazy_static;
 use winbar::{Winbar, WinbarAction};
-use windows::Win32::{Foundation::HWND, System::Console::SetConsoleCtrlHandler};
+use windows::Win32::{
+    Foundation::HWND,
+    System::Console::{SetConsoleCtrlHandler, CTRL_C_EVENT},
+};
 use windows::Win32::{
     Foundation::{BOOL, LPARAM, WPARAM},
     UI::WindowsAndMessaging::{PostMessageW, WM_CLOSE},

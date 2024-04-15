@@ -3,30 +3,22 @@ use std::sync::{atomic::Ordering, mpsc::Receiver, Mutex};
 use windows::{
     core::w,
     Win32::{
-        Foundation::{BOOL, COLORREF, HWND, LPARAM, LRESULT, RECT, WPARAM},
-        Graphics::Gdi::{
-            BeginPaint, CreateFontIndirectW, CreatePen, CreateSolidBrush, DrawTextW, EndPaint,
-            GetDC, ReleaseDC, SelectObject, SetBkColor, SetTextColor, DT_CENTER, DT_SINGLELINE,
-            DT_VCENTER, FONT_QUALITY, FW_NORMAL, LOGFONTW, PAINTSTRUCT, PROOF_QUALITY, PS_SOLID,
-        },
+        Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, WPARAM},
+        Graphics::Gdi::CreateSolidBrush,
         System::{
-            Console::{SetConsoleCtrlHandler, CTRL_C_EVENT},
             LibraryLoader::GetModuleHandleW,
-            Threading::{GetStartupInfoW, GetThreadId, STARTUPINFOW},
+            Threading::{GetStartupInfoW, STARTUPINFOW},
         },
         UI::WindowsAndMessaging::{
-            CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, PeekMessageW,
-            PostQuitMessage, PostThreadMessageW, RegisterClassW, SetLayeredWindowAttributes,
-            ShowWindow, TranslateMessage, LWA_COLORKEY, MSG, PM_REMOVE, SW_SHOWDEFAULT, WM_CLOSE,
-            WM_DESTROY, WM_PAINT, WM_QUIT, WNDCLASSW, WS_EX_LAYERED, WS_EX_TOOLWINDOW, WS_POPUP,
-            WS_VISIBLE,
+            CreateWindowExW, DefWindowProcW, DispatchMessageW, PeekMessageW, PostQuitMessage,
+            RegisterClassW, SetLayeredWindowAttributes, ShowWindow, TranslateMessage, LWA_COLORKEY,
+            MSG, PM_REMOVE, SW_SHOWDEFAULT, WM_CLOSE, WM_DESTROY, WNDCLASSW, WS_EX_LAYERED,
+            WS_EX_TOOLWINDOW, WS_POPUP, WS_VISIBLE,
         },
     },
 };
 
-use crate::{
-    component::Component, BACKGROUND, COMPONENT_GAP, FOREGROUND, HEIGHT, TRANSPARENT_COLOR, WIDTH,
-};
+use crate::{component::Component, COMPONENT_GAP, HEIGHT, TRANSPARENT_COLOR, WIDTH};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ComponentLocation {
