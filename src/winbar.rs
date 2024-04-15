@@ -15,17 +15,20 @@ use windows::{
             Threading::{GetStartupInfoW, GetThreadId, STARTUPINFOW},
         },
         UI::WindowsAndMessaging::{
-            CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, PeekMessageW, PostQuitMessage, PostThreadMessageW, RegisterClassW, SetLayeredWindowAttributes, ShowWindow, TranslateMessage, LWA_COLORKEY, MSG, PM_REMOVE, SW_SHOWDEFAULT, WM_CLOSE, WM_DESTROY, WM_PAINT, WM_QUIT, WNDCLASSW, WS_EX_LAYERED, WS_EX_TOOLWINDOW, WS_POPUP, WS_VISIBLE
+            CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, PeekMessageW,
+            PostQuitMessage, PostThreadMessageW, RegisterClassW, SetLayeredWindowAttributes,
+            ShowWindow, TranslateMessage, LWA_COLORKEY, MSG, PM_REMOVE, SW_SHOWDEFAULT, WM_CLOSE,
+            WM_DESTROY, WM_PAINT, WM_QUIT, WNDCLASSW, WS_EX_LAYERED, WS_EX_TOOLWINDOW, WS_POPUP,
+            WS_VISIBLE,
         },
     },
 };
 
 use crate::{
-    component::Component, windows_api::WindowsApi, BACKGROUND, FOREGROUND, HEIGHT,
-    TRANSPARENT_COLOR, WIDTH,
+    component::Component, BACKGROUND, COMPONENT_GAP, FOREGROUND, HEIGHT, TRANSPARENT_COLOR, WIDTH,
 };
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ComponentLocation {
     LEFT,
     MIDDLE,
@@ -33,7 +36,8 @@ pub enum ComponentLocation {
 }
 
 struct WinbarComponent {
-    location: ComponentLocation,
+    location_intention: ComponentLocation,
+    location: RECT,
     component: Box<dyn Component>,
 }
 
@@ -92,6 +96,8 @@ impl Winbar {
     }
 
     pub fn new(recv: Receiver<WinbarAction>) -> Self {
+        // TODO: accept the sender as well so we can clone it and pass it to the components (so that
+        // they can send update window actions if required)
         let hwnd = Self::create_window();
 
         Self {
@@ -134,52 +140,92 @@ impl Winbar {
         //TODO: shut down the components
     }
 
-    pub fn set_default_styles(&self) {
-        unsafe {
-            let hdc = GetDC(self.hwnd);
-
-            let pen = CreatePen(PS_SOLID, 0, COLORREF(BACKGROUND.to_single_rgb()));
-            let brush = CreateSolidBrush(COLORREF(BACKGROUND.to_single_rgb()));
-
-            SelectObject(hdc, pen);
-            SelectObject(hdc, brush);
-            SetBkColor(hdc, COLORREF(BACKGROUND.to_single_rgb()));
-
-            let font = CreateFontIndirectW(&LOGFONTW {
-                lfWeight: FW_NORMAL.0 as i32,
-                lfQuality: FONT_QUALITY(PROOF_QUALITY.0),
-                ..Default::default()
-            });
-
-            SelectObject(hdc, font);
-
-            SetTextColor(hdc, COLORREF(FOREGROUND.to_single_rgb()));
-
-            ReleaseDC(self.hwnd, hdc);
-        }
-    }
-
     pub fn add_component(&mut self, location: ComponentLocation, component: Box<dyn Component>) {
         let mut components = self.components.lock().unwrap();
         components.push(WinbarComponent {
-            location,
+            location_intention: location,
+            location: RECT::default(),
             component,
         })
     }
 
-    fn update(&self) {
-        let components = self.components.lock().unwrap();
-        components.iter().for_each(|component| {
-            component.component.draw(
-                self.hwnd,
-                &mut RECT {
-                    left: 0,
+    pub fn compute_component_locations(&self) {
+        let mut components = self.components.lock().unwrap();
+        let width = WIDTH.load(Ordering::SeqCst);
+        let height = HEIGHT.load(Ordering::SeqCst);
+        let gap = COMPONENT_GAP.load(Ordering::SeqCst);
+
+        let mut curr_loc_x = 0;
+
+        // left
+        components
+            .iter_mut()
+            .filter(|c| c.location_intention == ComponentLocation::LEFT)
+            .for_each(|c| {
+                let component_width = c.component.width(self.hwnd);
+                c.location = RECT {
                     top: 0,
-                    right: 1000,
-                    bottom: 20,
-                },
-            )
-        })
+                    bottom: height,
+                    left: curr_loc_x,
+                    right: curr_loc_x + component_width,
+                };
+                curr_loc_x += component_width + gap;
+            });
+
+        // right
+        curr_loc_x = width;
+        components
+            .iter_mut()
+            .filter(|c| c.location_intention == ComponentLocation::RIGHT)
+            .for_each(|c| {
+                let component_width = c.component.width(self.hwnd);
+                c.location = RECT {
+                    top: 0,
+                    bottom: height,
+                    left: curr_loc_x - component_width,
+                    right: curr_loc_x,
+                };
+                curr_loc_x -= component_width + gap;
+            });
+
+        // middle
+        // FIXME: a bit inefficient, change in the future...
+        let mut total_components = 0;
+        let total_width = components
+            .iter_mut()
+            .filter_map(|c| {
+                if c.location_intention == ComponentLocation::MIDDLE {
+                    total_components += 1;
+                    Some(c.component.width(self.hwnd))
+                } else {
+                    None
+                }
+            })
+            .reduce(|acc, width| acc + width)
+            .unwrap();
+
+        // we multiply by 1 less gap since it's in between the components
+        curr_loc_x = width / 2 - (total_width + (gap - 1) * total_components) / 2;
+        components
+            .iter_mut()
+            .filter(|c| c.location_intention == ComponentLocation::MIDDLE)
+            .for_each(|c| {
+                let component_width = c.component.width(self.hwnd);
+                c.location = RECT {
+                    top: 0,
+                    bottom: height,
+                    left: curr_loc_x,
+                    right: curr_loc_x + component_width,
+                };
+                curr_loc_x += component_width + gap;
+            });
+    }
+
+    fn update(&self) {
+        let mut components = self.components.lock().unwrap();
+        components
+            .iter_mut()
+            .for_each(|component| component.component.draw(self.hwnd, &mut component.location))
     }
 
     pub extern "system" fn window_proc(

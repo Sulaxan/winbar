@@ -13,6 +13,8 @@ use crate::windows_api::WindowsApi;
 
 use super::Component;
 
+const PADDING_X: i32 = 10;
+
 pub struct StaticTextComponent {
     text: String,
 }
@@ -31,13 +33,14 @@ impl Component for StaticTextComponent {
 
             GetTextExtentPoint32W(hdc, &WindowsApi::str_to_u16_slice(&self.text), &mut length);
 
-            length.cx
+            length.cx + PADDING_X * 2
         }
     }
 
     fn draw(&self, hwnd: HWND, rect: &mut RECT) {
         unsafe {
             let hdc = GetDC(hwnd);
+            WindowsApi::set_default_styles(hdc);
 
             RoundRect(hdc, rect.left, rect.top, rect.right, rect.bottom, 10, 10);
             DrawTextW(

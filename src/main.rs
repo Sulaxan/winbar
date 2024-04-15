@@ -11,7 +11,7 @@ use winbar::{Winbar, WinbarAction};
 use windows::Win32::{Foundation::HWND, System::Console::SetConsoleCtrlHandler};
 use windows::Win32::{
     Foundation::{BOOL, LPARAM, WPARAM},
-    UI::WindowsAndMessaging::{DestroyWindow, PostMessageW, WM_CLOSE},
+    UI::WindowsAndMessaging::{PostMessageW, WM_CLOSE},
 };
 
 pub mod color;
@@ -21,7 +21,8 @@ pub mod windows_api;
 
 const TRANSPARENT_COLOR: u32 = 0;
 const WIDTH: AtomicI32 = AtomicI32::new(2560);
-const HEIGHT: AtomicI32 = AtomicI32::new(20);
+const HEIGHT: AtomicI32 = AtomicI32::new(25);
+const COMPONENT_GAP: AtomicI32 = AtomicI32::new(10);
 const BACKGROUND: Color = Color::Rgb {
     r: 23,
     g: 23,
@@ -34,7 +35,7 @@ const FOREGROUND: Color = Color::Rgb {
 };
 
 lazy_static! {
-    static ref WINBAR: Arc<Mutex<HWND>> = Arc::new(Mutex::new(HWND(0)));
+    static ref WINBAR_HWND: Arc<Mutex<HWND>> = Arc::new(Mutex::new(HWND(0)));
 }
 
 fn main() {
@@ -43,15 +44,23 @@ fn main() {
     thread::spawn(move || {
         let mut winbar = Winbar::new(recv);
         {
-            let mut hwnd = WINBAR.lock().unwrap();
+            let mut hwnd = WINBAR_HWND.lock().unwrap();
             *hwnd = winbar.hwnd();
         }
 
-        winbar.set_default_styles();
         winbar.add_component(
             winbar::ComponentLocation::LEFT,
-            Box::new(StaticTextComponent::new("TEST".to_owned())),
+            Box::new(StaticTextComponent::new("left".to_owned())),
         );
+        winbar.add_component(
+            winbar::ComponentLocation::MIDDLE,
+            Box::new(StaticTextComponent::new("middle".to_owned())),
+        );
+        winbar.add_component(
+            winbar::ComponentLocation::RIGHT,
+            Box::new(StaticTextComponent::new("right".to_owned())),
+        );
+        winbar.compute_component_locations();
         winbar.listen();
     });
 
@@ -72,7 +81,7 @@ fn main() {
 pub extern "system" fn ctrl_handler(ctrltype: u32) -> BOOL {
     match ctrltype {
         CTRL_C_EVENT => {
-            WINBAR
+            WINBAR_HWND
                 .lock()
                 .and_then(|hwnd| unsafe {
                     PostMessageW(*hwnd, WM_CLOSE, WPARAM(0), LPARAM(0)).unwrap();
