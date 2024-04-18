@@ -1,12 +1,17 @@
-use windows::Win32::{
-    Foundation::COLORREF,
-    Graphics::Gdi::{
-        CreateFontIndirectW, CreatePen, CreateSolidBrush, SelectObject, SetBkColor, SetTextColor,
-        FONT_QUALITY, FW_NORMAL, HDC, LOGFONTW, PROOF_QUALITY, PS_SOLID,
+use windows::{
+    core::{w, HSTRING, PCWSTR},
+    Win32::{
+        Foundation::COLORREF,
+        Graphics::Gdi::{
+            CreateFontIndirectW, CreateFontW, CreatePen, CreateSolidBrush, SelectObject,
+            SetBkColor, SetTextColor, ANSI_CHARSET, CLIP_DEFAULT_PRECIS, DEFAULT_PITCH,
+            FF_DONTCARE, FONT_QUALITY, FW_DONTCARE, FW_NORMAL, HDC, LOGFONTW, OUT_TT_PRECIS,
+            PROOF_QUALITY, PS_SOLID,
+        },
     },
 };
 
-use crate::{BACKGROUND, FOREGROUND};
+use crate::{BACKGROUND, FONT_NAME, FOREGROUND};
 
 pub struct WindowsApi {}
 
@@ -24,11 +29,28 @@ impl WindowsApi {
             SelectObject(hdc, brush);
             SetBkColor(hdc, COLORREF(BACKGROUND.to_single_rgb()));
 
-            let font = CreateFontIndirectW(&LOGFONTW {
-                lfWeight: FW_NORMAL.0 as i32,
-                lfQuality: FONT_QUALITY(PROOF_QUALITY.0),
-                ..Default::default()
-            });
+            // let font = CreateFontIndirectW(&LOGFONTW {
+            //     lfWeight: FW_NORMAL.0 as i32,
+            //     lfQuality: FONT_QUALITY(PROOF_QUALITY.0),
+            //     ..Default::default()
+            // });
+
+            let font = CreateFontW(
+                24,
+                0,
+                0,
+                0,
+                FW_DONTCARE.0 as i32,
+                0,
+                0,
+                0,
+                ANSI_CHARSET.0.into(),
+                OUT_TT_PRECIS.0.into(),
+                CLIP_DEFAULT_PRECIS.0.into(),
+                PROOF_QUALITY.0.into(),
+                DEFAULT_PITCH.0 as u32 | FF_DONTCARE.0 as u32,
+                &HSTRING::from(FONT_NAME),
+            );
 
             SelectObject(hdc, font);
 
