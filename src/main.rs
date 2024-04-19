@@ -1,7 +1,7 @@
 use std::{
     sync::{
         atomic::{AtomicBool, AtomicI32, Ordering},
-        mpsc::channel,
+        mpsc::{self, channel},
         Arc, Mutex,
     },
     thread,
@@ -9,9 +9,14 @@ use std::{
 };
 
 use color::Color;
-use component::static_text::StaticTextComponent;
+use component::{
+    datetime::DateTimeComponent,
+    manager::{ComponentLocation, ComponentManager},
+    static_text::StaticTextComponent,
+};
 use lazy_static::lazy_static;
-use winbar::{Winbar, WinbarAction};
+use tokio::{runtime, task::LocalSet};
+use winbar::{WinbarAction, WinbarContext};
 use windows::Win32::{
     Foundation::HWND,
     System::Console::{SetConsoleCtrlHandler, CTRL_C_EVENT},
@@ -42,46 +47,65 @@ const FOREGROUND: Color = Color::Rgb {
 };
 const FONT_NAME: &str = "Segoe UI Variable";
 
-const READY: AtomicBool = AtomicBool::new(false);
+const RUNNING: AtomicBool = AtomicBool::new(true);
 
 lazy_static! {
     static ref WINBAR_HWND: Arc<Mutex<HWND>> = Arc::new(Mutex::new(HWND(0)));
+    static ref COMPONENT_MANAGER: Arc<Mutex<ComponentManager>> =
+        Arc::new(Mutex::new(ComponentManager::new()));
 }
 
-#[tokio::main]
-async fn main() {
-    thread::spawn(move || {
-        let winbar_hwnd = winbar::create_window();
-        {
-            let mut hwnd = WINBAR_HWND.lock().unwrap();
-            *hwnd = winbar_hwnd;
-        }
-
-        winbar::listen(winbar_hwnd);
-    });
-
+fn main() {
     unsafe {
         SetConsoleCtrlHandler(Some(ctrl_handler), true).unwrap();
     }
 
-    let mut winbar = Winbar::new();
-
-    winbar.add_component(
-        winbar::ComponentLocation::LEFT,
-        Box::new(StaticTextComponent::new("left".to_owned())),
+    let mut manager = COMPONENT_MANAGER.lock().unwrap();
+    // manager.add(
+    //     ComponentLocation::LEFT,
+    //     Box::new(StaticTextComponent::new("left".to_owned())),
+    // );
+    // manager.add(
+    //     ComponentLocation::MIDDLE,
+    //     Box::new(StaticTextComponent::new("middle".to_owned())),
+    // );
+    // manager.add(
+    //     ComponentLocation::RIGHT,
+    //     Box::new(StaticTextComponent::new("right".to_owned())),
+    // );
+    manager.add(
+        ComponentLocation::RIGHT,
+        Box::new(DateTimeComponent::new("%F %r".to_owned())),
     );
-    winbar.add_component(
-        winbar::ComponentLocation::MIDDLE,
-        Box::new(StaticTextComponent::new("middle".to_owned())),
-    );
-    winbar.add_component(
-        winbar::ComponentLocation::RIGHT,
-        Box::new(StaticTextComponent::new("right".to_owned())),
-    );
+    drop(manager);
 
-    while !READY.load(Ordering::SeqCst) {}
+    let winbar_hwnd = winbar::create_window();
+    {
+        let mut hwnd = WINBAR_HWND.lock().unwrap();
+        *hwnd = winbar_hwnd;
+    }
 
-    loop {}
+    let (send, recv) = mpsc::channel::<WinbarAction>();
+    let winbar_ctx = WinbarContext::new(send);
+
+    thread::spawn(move || {
+        let rt = runtime::Runtime::new().unwrap();
+        // using a local set since MutexGuard is not sent and don't feel like using tokio's
+        // sync::Mutex
+        let set = LocalSet::new();
+        set.block_on(&rt, async {
+            println!("waiting");
+            let mut manager = COMPONENT_MANAGER.lock().unwrap();
+            println!("got");
+            let mut set = manager.start(winbar_ctx, winbar_hwnd.clone());
+            drop(manager);
+            while let Some(_) = set.join_next().await {
+                println!("ok");
+            }
+        });
+    });
+
+    winbar::listen(winbar_hwnd, recv);
 }
 
 pub extern "system" fn ctrl_handler(ctrltype: u32) -> BOOL {
@@ -94,6 +118,8 @@ pub extern "system" fn ctrl_handler(ctrltype: u32) -> BOOL {
                     Ok(())
                 })
                 .unwrap();
+            RUNNING.store(false, Ordering::SeqCst);
+
             true.into()
         }
         _ => false.into(),

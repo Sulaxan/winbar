@@ -1,11 +1,16 @@
-use std::sync::{atomic::Ordering, mpsc::Receiver, Mutex};
+use std::sync::{
+    atomic::Ordering,
+    mpsc::{Receiver, Sender},
+    Mutex,
+};
 
+use getset::Getters;
 use tokio::task::JoinSet;
 use windows::{
     core::w,
     Win32::{
         Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, WPARAM},
-        Graphics::Gdi::CreateSolidBrush,
+        Graphics::Gdi::{BeginPaint, CreateSolidBrush, EndPaint, UpdateWindow, PAINTSTRUCT},
         System::{
             LibraryLoader::GetModuleHandleW,
             Threading::{GetStartupInfoW, STARTUPINFOW},
@@ -13,133 +18,30 @@ use windows::{
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, DispatchMessageW, PeekMessageW, PostQuitMessage,
             RegisterClassW, SetLayeredWindowAttributes, ShowWindow, TranslateMessage, LWA_COLORKEY,
-            MSG, PM_REMOVE, SW_SHOWDEFAULT, WM_CLOSE, WM_DESTROY, WNDCLASSW, WS_EX_LAYERED,
-            WS_EX_TOOLWINDOW, WS_POPUP, WS_VISIBLE,
+            MSG, PM_REMOVE, SW_SHOWDEFAULT, WM_CLOSE, WM_DESTROY, WM_ERASEBKGND, WM_PAINT,
+            WNDCLASSW, WS_EX_LAYERED, WS_EX_TOOLWINDOW, WS_POPUP, WS_VISIBLE,
         },
     },
 };
 
-use crate::{component::Component, COMPONENT_GAP, HEIGHT, TRANSPARENT_COLOR, WIDTH};
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum ComponentLocation {
-    LEFT,
-    MIDDLE,
-    RIGHT,
-}
-
-struct WinbarComponent {
-    location_intention: ComponentLocation,
-    location: RECT,
-    component: Box<dyn Component>,
-}
+use crate::{
+    component::Component, windows_api::WindowsApi, COMPONENT_GAP, COMPONENT_MANAGER, HEIGHT,
+    RUNNING, TRANSPARENT_COLOR, WIDTH,
+};
 
 pub enum WinbarAction {
     UpdateWindow,
 }
 
-pub struct Winbar {
-    components: Mutex<Vec<WinbarComponent>>,
+#[derive(Getters, Clone)]
+pub struct WinbarContext {
+    #[getset(get = "pub")]
+    sender: Sender<WinbarAction>,
 }
 
-impl Winbar {
-    pub fn new() -> Self {
-        Self {
-            components: Mutex::new(Vec::new()),
-        }
-    }
-
-    pub async fn start(&self, hwnd: HWND) {
-        self.compute_component_locations(hwnd);
-
-        let mut set = JoinSet::<()>::new();
-        let mut components = self.components.lock().unwrap();
-        for winbar_comp in components.drain(0..) {
-            let component = winbar_comp.component;
-            let location = winbar_comp.location;
-            set.spawn(component.start(hwnd, location));
-        }
-    }
-
-    pub fn add_component(&mut self, location: ComponentLocation, component: Box<dyn Component>) {
-        let mut components = self.components.lock().unwrap();
-        components.push(WinbarComponent {
-            location_intention: location,
-            location: RECT::default(),
-            component,
-        })
-    }
-
-    fn compute_component_locations(&self, hwnd: HWND) {
-        let mut components = self.components.lock().unwrap();
-        let width = WIDTH.load(Ordering::SeqCst);
-        let height = HEIGHT.load(Ordering::SeqCst);
-        let gap = COMPONENT_GAP.load(Ordering::SeqCst);
-
-        let mut curr_loc_x = 0;
-
-        // left
-        components
-            .iter_mut()
-            .filter(|c| c.location_intention == ComponentLocation::LEFT)
-            .for_each(|c| {
-                let component_width = c.component.width(hwnd);
-                c.location = RECT {
-                    top: 0,
-                    bottom: height,
-                    left: curr_loc_x,
-                    right: curr_loc_x + component_width,
-                };
-                curr_loc_x += component_width + gap;
-            });
-
-        // right
-        curr_loc_x = width;
-        components
-            .iter_mut()
-            .filter(|c| c.location_intention == ComponentLocation::RIGHT)
-            .for_each(|c| {
-                let component_width = c.component.width(hwnd);
-                c.location = RECT {
-                    top: 0,
-                    bottom: height,
-                    left: curr_loc_x - component_width,
-                    right: curr_loc_x,
-                };
-                curr_loc_x -= component_width + gap;
-            });
-
-        // middle
-        // FIXME: a bit inefficient, change in the future...
-        let mut total_components = 0;
-        let total_width = components
-            .iter_mut()
-            .filter_map(|c| {
-                if c.location_intention == ComponentLocation::MIDDLE {
-                    total_components += 1;
-                    Some(c.component.width(hwnd))
-                } else {
-                    None
-                }
-            })
-            .reduce(|acc, width| acc + width)
-            .unwrap();
-
-        // we multiply by 1 less gap since it's in between the components
-        curr_loc_x = width / 2 - (total_width + (gap - 1) * total_components) / 2;
-        components
-            .iter_mut()
-            .filter(|c| c.location_intention == ComponentLocation::MIDDLE)
-            .for_each(|c| {
-                let component_width = c.component.width(hwnd);
-                c.location = RECT {
-                    top: 0,
-                    bottom: height,
-                    left: curr_loc_x,
-                    right: curr_loc_x + component_width,
-                };
-                curr_loc_x += component_width + gap;
-            });
+impl WinbarContext {
+    pub fn new(sender: Sender<WinbarAction>) -> Self {
+        Self { sender }
     }
 }
 
@@ -186,10 +88,18 @@ pub fn create_window() -> HWND {
     }
 }
 
-pub fn listen(hwnd: HWND) {
+pub fn listen(hwnd: HWND, recv: Receiver<WinbarAction>) {
     let mut msg = MSG::default();
 
     loop {
+        if let Ok(action) = recv.try_recv() {
+            match action {
+                WinbarAction::UpdateWindow => unsafe {
+                    UpdateWindow(hwnd);
+                },
+            }
+        }
+
         unsafe {
             if PeekMessageW(&mut msg, hwnd, 0, 0, PM_REMOVE).as_bool() {
                 TranslateMessage(&mut msg);
@@ -214,6 +124,28 @@ pub extern "system" fn window_proc(
 ) -> LRESULT {
     unsafe {
         match msg {
+            WM_PAINT => {
+                let mut ps = PAINTSTRUCT::default();
+                let hdc = BeginPaint(hwnd, &mut ps);
+
+                WindowsApi::set_default_styles(hdc);
+                println!("Drawing");
+
+                let mut manager = COMPONENT_MANAGER.lock().unwrap();
+
+                // FIXME: not ideal to compute locations every time... need to change in the
+                // future
+                manager.compute_locations(hwnd, hdc);
+                println!("Computed locs");
+
+                manager.draw_all(hwnd, hdc);
+                println!("Drawn all");
+
+                EndPaint(hwnd, &mut ps);
+            }
+            WM_ERASEBKGND => {
+                return LRESULT(1);
+            }
             WM_DESTROY => {
                 PostQuitMessage(0);
             }
