@@ -1,5 +1,9 @@
 use std::{
-    sync::{atomic::AtomicI32, mpsc::channel, Arc, Mutex},
+    sync::{
+        atomic::{AtomicBool, AtomicI32, Ordering},
+        mpsc::channel,
+        Arc, Mutex,
+    },
     thread,
     time::Duration,
 };
@@ -38,48 +42,46 @@ const FOREGROUND: Color = Color::Rgb {
 };
 const FONT_NAME: &str = "Segoe UI Variable";
 
+const READY: AtomicBool = AtomicBool::new(false);
+
 lazy_static! {
     static ref WINBAR_HWND: Arc<Mutex<HWND>> = Arc::new(Mutex::new(HWND(0)));
 }
 
-fn main() {
-    let (send, recv) = channel::<WinbarAction>();
-
+#[tokio::main]
+async fn main() {
     thread::spawn(move || {
-        let mut winbar = Winbar::new(recv);
+        let winbar_hwnd = winbar::create_window();
         {
             let mut hwnd = WINBAR_HWND.lock().unwrap();
-            *hwnd = winbar.hwnd();
+            *hwnd = winbar_hwnd;
         }
 
-        winbar.add_component(
-            winbar::ComponentLocation::LEFT,
-            Box::new(StaticTextComponent::new("left".to_owned())),
-        );
-        winbar.add_component(
-            winbar::ComponentLocation::MIDDLE,
-            Box::new(StaticTextComponent::new("middle".to_owned())),
-        );
-        winbar.add_component(
-            winbar::ComponentLocation::RIGHT,
-            Box::new(StaticTextComponent::new("right".to_owned())),
-        );
-        winbar.compute_component_locations();
-        winbar.listen();
+        winbar::listen(winbar_hwnd);
     });
 
     unsafe {
         SetConsoleCtrlHandler(Some(ctrl_handler), true).unwrap();
     }
 
-    loop {
-        println!("Sending update window....");
-        if send.send(WinbarAction::UpdateWindow).is_ok() {
-            thread::sleep(Duration::from_secs(1));
-        } else {
-            break;
-        }
-    }
+    let mut winbar = Winbar::new();
+
+    winbar.add_component(
+        winbar::ComponentLocation::LEFT,
+        Box::new(StaticTextComponent::new("left".to_owned())),
+    );
+    winbar.add_component(
+        winbar::ComponentLocation::MIDDLE,
+        Box::new(StaticTextComponent::new("middle".to_owned())),
+    );
+    winbar.add_component(
+        winbar::ComponentLocation::RIGHT,
+        Box::new(StaticTextComponent::new("right".to_owned())),
+    );
+
+    while !READY.load(Ordering::SeqCst) {}
+
+    loop {}
 }
 
 pub extern "system" fn ctrl_handler(ctrltype: u32) -> BOOL {

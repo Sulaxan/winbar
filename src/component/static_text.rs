@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use windows::Win32::{
     Foundation::{HWND, RECT, SIZE},
     Graphics::Gdi::{
@@ -20,8 +21,26 @@ impl StaticTextComponent {
     pub fn new(text: String) -> Self {
         Self { text }
     }
+
+    fn draw(hwnd: HWND, rect: &mut RECT, text: &str) {
+        unsafe {
+            let hdc = GetDC(hwnd);
+            WindowsApi::set_default_styles(hdc);
+
+            RoundRect(hdc, rect.left, rect.top, rect.right, rect.bottom, 10, 10);
+            DrawTextW(
+                hdc,
+                &mut WindowsApi::str_to_u16_slice(text),
+                rect,
+                DT_SINGLELINE | DT_VCENTER | DT_CENTER,
+            );
+
+            ReleaseDC(hwnd, hdc);
+        }
+    }
 }
 
+#[async_trait]
 impl Component for StaticTextComponent {
     fn width(&self, hwnd: HWND) -> i32 {
         unsafe {
@@ -34,24 +53,7 @@ impl Component for StaticTextComponent {
         }
     }
 
-    fn draw(&self, hwnd: HWND, rect: &mut RECT) {
-        unsafe {
-            let hdc = GetDC(hwnd);
-            WindowsApi::set_default_styles(hdc);
-
-            RoundRect(hdc, rect.left, rect.top, rect.right, rect.bottom, 10, 10);
-            DrawTextW(
-                hdc,
-                &mut WindowsApi::str_to_u16_slice(&self.text),
-                rect,
-                DT_SINGLELINE | DT_VCENTER | DT_CENTER,
-            );
-
-            ReleaseDC(hwnd, hdc);
-        }
+    async fn start(&mut self, hwnd: HWND, mut rect: RECT) {
+        Self::draw(hwnd, &mut rect, &self.text);
     }
-
-    fn start(&mut self, _hwnd: HWND, _rect: &mut RECT) {}
-
-    fn stop(self) {}
 }
