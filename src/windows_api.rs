@@ -1,12 +1,11 @@
 use windows::{
-    core::{w, HSTRING, PCWSTR},
+    core::HSTRING,
     Win32::{
         Foundation::COLORREF,
         Graphics::Gdi::{
-            CreateFontIndirectW, CreateFontW, CreatePen, CreateSolidBrush, SelectObject,
-            SetBkColor, SetTextColor, ANSI_CHARSET, CLIP_DEFAULT_PRECIS, DEFAULT_PITCH,
-            FF_DONTCARE, FONT_QUALITY, FW_DONTCARE, FW_NORMAL, HDC, LOGFONTW, OUT_TT_PRECIS,
-            PROOF_QUALITY, PS_SOLID,
+            CreateFontW, CreatePen, CreateSolidBrush, SelectObject, SetBkColor, SetTextColor,
+            ANSI_CHARSET, CLIP_DEFAULT_PRECIS, DEFAULT_PITCH, FF_DONTCARE, FW_DONTCARE, HDC,
+            OUT_TT_PRECIS, PROOF_QUALITY, PS_SOLID,
         },
     },
 };
@@ -36,7 +35,7 @@ impl WindowsApi {
             // });
 
             let font = CreateFontW(
-                24,
+                18,
                 0,
                 0,
                 0,

@@ -36,7 +36,7 @@ const FOREGROUND: Color = Color::Rgb {
     g: 181,
     b: 80,
 };
-const FONT_NAME: &str = "JetBrainsMono NF";
+const FONT_NAME: &str = "Segoe UI Variable";
 
 lazy_static! {
     static ref WINBAR_HWND: Arc<Mutex<HWND>> = Arc::new(Mutex::new(HWND(0)));

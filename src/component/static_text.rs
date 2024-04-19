@@ -51,11 +51,7 @@ impl Component for StaticTextComponent {
         }
     }
 
-    fn start(&mut self, _hwnd: HWND, _rect: &mut RECT) {
-        todo!()
-    }
+    fn start(&mut self, _hwnd: HWND, _rect: &mut RECT) {}
 
-    fn stop(&mut self) {
-        todo!()
-    }
+    fn stop(self) {}
 }

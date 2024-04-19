@@ -1,5 +1,6 @@
 use windows::Win32::Foundation::{HWND, RECT};
 
+pub mod datetime;
 pub mod static_text;
 
 pub trait Component {
@@ -15,5 +16,5 @@ pub trait Component {
 
     /// Stop any logic related to the component. Anything that must be disposed should be disposed
     /// within this method.
-    fn stop(&mut self);
+    fn stop(self);
 }
