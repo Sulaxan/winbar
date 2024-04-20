@@ -2,15 +2,22 @@ use windows::{
     core::HSTRING,
     Win32::{
         Foundation::COLORREF,
-        Graphics::Gdi::{
-            CreateFontW, CreatePen, CreateSolidBrush, SelectObject, SetBkColor, SetTextColor,
-            ANSI_CHARSET, CLIP_DEFAULT_PRECIS, DEFAULT_PITCH, FF_DONTCARE, FW_DONTCARE, HDC,
-            OUT_TT_PRECIS, PROOF_QUALITY, PS_SOLID,
+        Graphics::{
+            self,
+            Gdi::{
+                CreateFontW, CreatePen, CreateSolidBrush, SelectObject, SetBkColor, SetTextColor,
+                ANSI_CHARSET, CLIP_DEFAULT_PRECIS, DEFAULT_PITCH, FF_DONTCARE, FW_DONTCARE, HDC,
+                OUT_TT_PRECIS, PROOF_QUALITY, PS_SOLID,
+            },
+            GdiPlus::{
+                GdipDrawRectangleI, GdipDrawString, GdipFillRectangle, GdiplusShutdown,
+                GdiplusStartup, GdiplusStartupInput, GdiplusStartupOutput, GpBrush, GpGraphics,
+            },
         },
     },
 };
 
-use crate::{BACKGROUND, FONT_NAME, FOREGROUND};
+use crate::{BACKGROUND, FONT_NAME, FOREGROUND, TRANSPARENT_COLOR};
 
 pub struct WindowsApi {}
 
@@ -27,6 +34,7 @@ impl WindowsApi {
             SelectObject(hdc, pen);
             SelectObject(hdc, brush);
             SetBkColor(hdc, COLORREF(BACKGROUND.to_single_rgb()));
+            // SetBkColor(hdc, COLORREF(TRANSPARENT_COLOR));
 
             // let font = CreateFontIndirectW(&LOGFONTW {
             //     lfWeight: FW_NORMAL.0 as i32,
@@ -54,6 +62,30 @@ impl WindowsApi {
             SelectObject(hdc, font);
 
             SetTextColor(hdc, COLORREF(FOREGROUND.to_single_rgb()));
+        }
+    }
+
+    // inspired from: https://github.com/davidrios/gdiplus-rs
+    pub fn startup_gdiplus() -> usize {
+        let input = GdiplusStartupInput {
+            GdiplusVersion: 1,
+            SuppressBackgroundThread: false.into(),
+            SuppressExternalCodecs: false.into(),
+            ..Default::default()
+        };
+
+        let mut token: usize = 0;
+        let mut output = GdiplusStartupOutput::default();
+        unsafe {
+            GdiplusStartup(&mut token, &input, &mut output);
+        }
+
+        token
+    }
+
+    pub fn shutdown_gdiplus(token: usize) {
+        unsafe {
+            GdiplusShutdown(token);
         }
     }
 }

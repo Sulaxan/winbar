@@ -11,4 +11,4 @@ chrono = "0.4.38"
 getset = "0.1.2"
 lazy_static = "1.4.0"
 tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread", "time", "sync"] }
-windows = { version = "0.54.0", features = ["Win32_UI_WindowsAndMessaging", "Win32_Foundation", "Win32_System_Threading", "Win32_System_LibraryLoader", "Win32_Graphics_Gdi", "Win32_System_Console"] }
+windows = { version = "0.54.0", features = ["Win32_UI_WindowsAndMessaging", "Win32_Foundation", "Win32_System_Threading", "Win32_System_LibraryLoader", "Win32_Graphics_Gdi", "Win32_System_Console", "Win32_Graphics_GdiPlus"] }

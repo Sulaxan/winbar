@@ -1,13 +1,21 @@
+use std::mem::MaybeUninit;
+
 use async_trait::async_trait;
 use windows::Win32::{
     Foundation::{HWND, RECT, SIZE},
-    Graphics::Gdi::{
-        DrawTextW, GetTextExtentPoint32W, RoundRect, DT_CENTER, DT_SINGLELINE,
-        DT_VCENTER, HDC,
+    Graphics::{
+        Gdi::{
+            DrawTextW, GetTextExtentPoint32W, RoundRect, DT_CENTER, DT_SINGLELINE, DT_VCENTER, HDC,
+        },
+        GdiPlus::{
+            GdipCloneBrush, GdipCreateFromHDC, GdipCreatePen1, GdipCreateSolidFill,
+            GdipDrawRectangle, GdipDrawString, GdipFillRectangle, GdipGetBrushType,
+            GdipGetPenBrushFill, GpBrush, GpGraphics, GpSolidFill, RectF, Unit,
+        },
     },
 };
 
-use crate::{winbar::WinbarContext, windows_api::WindowsApi};
+use crate::{color::Color, winbar::WinbarContext, windows_api::WindowsApi};
 
 use super::Component;
 
@@ -35,15 +43,51 @@ impl Component for StaticTextComponent {
         }
     }
 
-    fn draw(&self, _hwnd: HWND, mut rect: RECT, hdc: HDC) {
+    fn draw(&self, _hwnd: HWND, rect: RECT, hdc: HDC) {
         unsafe {
-            RoundRect(hdc, rect.left, rect.top, rect.right, rect.bottom, 10, 10);
-            DrawTextW(
-                hdc,
-                &mut WindowsApi::str_to_u16_slice(&self.text),
-                &mut rect,
-                DT_SINGLELINE | DT_VCENTER | DT_CENTER,
+            let mut graphics = MaybeUninit::uninit();
+            GdipCreateFromHDC(hdc, graphics.as_mut_ptr());
+
+            // based on: https://github.com/davidrios/gdiplus-rs
+            let g = graphics.assume_init();
+
+            let mut bg_pen = MaybeUninit::uninit();
+            GdipCreatePen1(
+                Color::Rgb {
+                    r: 15,
+                    g: 15,
+                    b: 15,
+                }
+                .to_single_rgb(),
+                15.0,
+                Unit::default(),
+                bg_pen.as_mut_ptr(),
             );
+
+            let pen = bg_pen.assume_init();
+
+            let mut bg_brush = MaybeUninit::uninit();
+            GdipGetPenBrushFill(pen, bg_brush.as_mut_ptr());
+
+            let brush = bg_brush.assume_init();
+
+            GdipFillRectangle(
+                g,
+                brush,
+                rect.left as f32,
+                rect.top as f32,
+                (rect.right - rect.left) as f32,
+                (rect.bottom - rect.top) as f32,
+            );
+
+            // RoundRect(hdc, rect.left, rect.top, rect.right, rect.bottom, 10, 10);
+
+            // DrawTextW(
+            //     hdc,
+            //     &mut WindowsApi::str_to_u16_slice(&self.text),
+            //     &mut rect,
+            //     DT_SINGLELINE | DT_VCENTER | DT_CENTER,
+            // );
         }
     }
 

@@ -24,6 +24,7 @@ use windows::Win32::{
     Foundation::{BOOL, LPARAM, WPARAM},
     UI::WindowsAndMessaging::{PostMessageW, WM_CLOSE},
 };
+use windows_api::WindowsApi;
 
 pub mod color;
 pub mod component;
@@ -55,6 +56,8 @@ lazy_static! {
 }
 
 fn main() {
+    let token = WindowsApi::startup_gdiplus();
+
     unsafe {
         SetConsoleCtrlHandler(Some(ctrl_handler), true).unwrap();
     }
@@ -97,6 +100,8 @@ fn main() {
     });
 
     winbar::listen(winbar_hwnd, recv);
+
+    WindowsApi::shutdown_gdiplus(token);
 }
 
 pub extern "system" fn ctrl_handler(ctrltype: u32) -> BOOL {
