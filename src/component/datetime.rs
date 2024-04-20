@@ -1,12 +1,15 @@
 use std::{
-    sync::mpsc::Sender,
+    sync::{mpsc::Sender, Arc},
     thread::{self, JoinHandle},
     time::Duration,
 };
 
 use async_trait::async_trait;
 use chrono::Local;
-use tokio::time::{self, Interval};
+use tokio::{
+    sync::Mutex,
+    time::{self, Interval},
+};
 use windows::Win32::{
     Foundation::{HWND, RECT, SIZE},
     Graphics::Gdi::{
@@ -28,7 +31,7 @@ pub struct DateTimeComponent {
 
 impl DateTimeComponent {
     pub fn new(format: String) -> Self {
-        Self { format: format }
+        Self { format }
     }
 }
 
@@ -52,7 +55,6 @@ impl Component for DateTimeComponent {
     }
 
     fn draw(&self, hwnd: HWND, mut rect: RECT, hdc: HDC) {
-        println!("a");
         let time = Local::now();
         let formatted = time.format(&self.format).to_string();
 
@@ -67,7 +69,7 @@ impl Component for DateTimeComponent {
         }
     }
 
-    async fn start(&mut self, ctx: WinbarContext, hwnd: HWND, rect: RECT) {
+    async fn start(&self, ctx: WinbarContext, hwnd: HWND, rect: RECT) {
         let mut interval = time::interval(Duration::from_millis(500));
         loop {
             // first tick completes immediately

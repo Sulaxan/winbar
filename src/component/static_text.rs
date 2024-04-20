@@ -47,5 +47,5 @@ impl Component for StaticTextComponent {
         }
     }
 
-    async fn start(&mut self, ctx: WinbarContext, hwnd: HWND, rect: RECT) {}
+    async fn start(&self, ctx: WinbarContext, hwnd: HWND, rect: RECT) {}
 }

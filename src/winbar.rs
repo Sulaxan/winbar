@@ -10,7 +10,9 @@ use windows::{
     core::w,
     Win32::{
         Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, WPARAM},
-        Graphics::Gdi::{BeginPaint, CreateSolidBrush, EndPaint, UpdateWindow, PAINTSTRUCT},
+        Graphics::Gdi::{
+            BeginPaint, CreateSolidBrush, EndPaint, InvalidateRect, UpdateWindow, PAINTSTRUCT,
+        },
         System::{
             LibraryLoader::GetModuleHandleW,
             Threading::{GetStartupInfoW, STARTUPINFOW},
@@ -95,7 +97,8 @@ pub fn listen(hwnd: HWND, recv: Receiver<WinbarAction>) {
         if let Ok(action) = recv.try_recv() {
             match action {
                 WinbarAction::UpdateWindow => unsafe {
-                    UpdateWindow(hwnd);
+                    // UpdateWindow(hwnd);
+                    InvalidateRect(hwnd, None, true);
                 },
             }
         }
@@ -129,17 +132,14 @@ pub extern "system" fn window_proc(
                 let hdc = BeginPaint(hwnd, &mut ps);
 
                 WindowsApi::set_default_styles(hdc);
-                println!("Drawing");
 
                 let mut manager = COMPONENT_MANAGER.lock().unwrap();
 
                 // FIXME: not ideal to compute locations every time... need to change in the
                 // future
                 manager.compute_locations(hwnd, hdc);
-                println!("Computed locs");
 
                 manager.draw_all(hwnd, hdc);
-                println!("Drawn all");
 
                 EndPaint(hwnd, &mut ps);
             }

@@ -18,5 +18,6 @@ pub trait Component {
     fn draw(&self, hwnd: HWND, rect: RECT, hdc: HDC);
 
     /// Start any logic related to the component (e.g., a task to UpdateDraw).
-    async fn start(&mut self, ctx: WinbarContext, hwnd: HWND, rect: RECT);
+    //TODO: Make this non-mut so that we no longer need to take in a mutex
+    async fn start(&self, ctx: WinbarContext, hwnd: HWND, rect: RECT);
 }

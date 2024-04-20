@@ -61,21 +61,21 @@ fn main() {
     }
 
     let mut manager = COMPONENT_MANAGER.lock().unwrap();
-    // manager.add(
-    //     ComponentLocation::LEFT,
-    //     Box::new(StaticTextComponent::new("left".to_owned())),
-    // );
-    // manager.add(
-    //     ComponentLocation::MIDDLE,
-    //     Box::new(StaticTextComponent::new("middle".to_owned())),
-    // );
-    // manager.add(
-    //     ComponentLocation::RIGHT,
-    //     Box::new(StaticTextComponent::new("right".to_owned())),
-    // );
+    manager.add(
+        ComponentLocation::LEFT,
+        Arc::new(StaticTextComponent::new("left".to_owned())),
+    );
+    manager.add(
+        ComponentLocation::MIDDLE,
+        Arc::new(StaticTextComponent::new("middle".to_owned())),
+    );
     manager.add(
         ComponentLocation::RIGHT,
-        Box::new(DateTimeComponent::new("%F %r".to_owned())),
+        Arc::new(StaticTextComponent::new("right".to_owned())),
+    );
+    manager.add(
+        ComponentLocation::RIGHT,
+        Arc::new(DateTimeComponent::new("%F %r".to_owned())),
     );
     drop(manager);
 
@@ -90,19 +90,11 @@ fn main() {
 
     thread::spawn(move || {
         let rt = runtime::Runtime::new().unwrap();
-        // using a local set since MutexGuard is not sent and don't feel like using tokio's
-        // sync::Mutex
-        let set = LocalSet::new();
-        set.block_on(&rt, async {
-            println!("waiting");
-            let mut manager = COMPONENT_MANAGER.lock().unwrap();
-            println!("got");
-            let mut set = manager.start(winbar_ctx, winbar_hwnd.clone());
-            drop(manager);
-            while let Some(_) = set.join_next().await {
-                println!("ok");
-            }
-        });
+        let mut manager = COMPONENT_MANAGER.lock().unwrap();
+        let set = manager.start(winbar_ctx, winbar_hwnd.clone());
+        drop(manager);
+
+        rt.block_on(set);
     });
 
     winbar::listen(winbar_hwnd, recv);
