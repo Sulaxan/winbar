@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use windows::Win32::{
     Foundation::{HWND, RECT, SIZE},
     Graphics::Gdi::{
-        DrawTextW, GetDC, GetTextExtentPoint32W, ReleaseDC, RoundRect, DT_CENTER, DT_SINGLELINE,
+        DrawTextW, GetTextExtentPoint32W, RoundRect, DT_CENTER, DT_SINGLELINE,
         DT_VCENTER, HDC,
     },
 };
@@ -25,7 +25,7 @@ impl StaticTextComponent {
 
 #[async_trait]
 impl Component for StaticTextComponent {
-    fn width(&self, hwnd: HWND, hdc: HDC) -> i32 {
+    fn width(&self, _hwnd: HWND, hdc: HDC) -> i32 {
         unsafe {
             let mut length: SIZE = SIZE::default();
 
@@ -35,7 +35,7 @@ impl Component for StaticTextComponent {
         }
     }
 
-    fn draw(&self, hwnd: HWND, mut rect: RECT, hdc: HDC) {
+    fn draw(&self, _hwnd: HWND, mut rect: RECT, hdc: HDC) {
         unsafe {
             RoundRect(hdc, rect.left, rect.top, rect.right, rect.bottom, 10, 10);
             DrawTextW(
@@ -47,5 +47,5 @@ impl Component for StaticTextComponent {
         }
     }
 
-    async fn start(&self, ctx: WinbarContext, hwnd: HWND, rect: RECT) {}
+    async fn start(&self, _ctx: WinbarContext, _hwnd: HWND, _rect: RECT) {}
 }

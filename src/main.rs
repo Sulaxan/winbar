@@ -1,11 +1,10 @@
 use std::{
     sync::{
         atomic::{AtomicBool, AtomicI32, Ordering},
-        mpsc::{self, channel},
+        mpsc::{self},
         Arc, Mutex,
     },
     thread,
-    time::Duration,
 };
 
 use color::Color;
@@ -15,7 +14,7 @@ use component::{
     static_text::StaticTextComponent,
 };
 use lazy_static::lazy_static;
-use tokio::{runtime, task::LocalSet};
+use tokio::runtime;
 use winbar::{WinbarAction, WinbarContext};
 use windows::Win32::{
     Foundation::HWND,

@@ -1,20 +1,12 @@
-use std::{
-    sync::{mpsc::Sender, Arc},
-    thread::{self, JoinHandle},
-    time::Duration,
-};
+use std::time::Duration;
 
 use async_trait::async_trait;
 use chrono::Local;
-use tokio::{
-    sync::Mutex,
-    time::{self, Interval},
-};
+use tokio::time::{self};
 use windows::Win32::{
     Foundation::{HWND, RECT, SIZE},
     Graphics::Gdi::{
-        DrawTextW, GetDC, GetTextExtentPoint32W, ReleaseDC, RoundRect, UpdateWindow, DT_CENTER,
-        DT_SINGLELINE, DT_VCENTER, HDC,
+        DrawTextW, GetTextExtentPoint32W, RoundRect, DT_CENTER, DT_SINGLELINE, DT_VCENTER, HDC,
     },
 };
 
@@ -37,7 +29,7 @@ impl DateTimeComponent {
 
 #[async_trait]
 impl Component for DateTimeComponent {
-    fn width(&self, hwnd: HWND, hdc: HDC) -> i32 {
+    fn width(&self, _hwnd: HWND, hdc: HDC) -> i32 {
         let time = Local::now();
         let formatted_time = time.format(&self.format).to_string();
 
@@ -54,7 +46,7 @@ impl Component for DateTimeComponent {
         }
     }
 
-    fn draw(&self, hwnd: HWND, mut rect: RECT, hdc: HDC) {
+    fn draw(&self, _hwnd: HWND, mut rect: RECT, hdc: HDC) {
         let time = Local::now();
         let formatted = time.format(&self.format).to_string();
 
@@ -69,7 +61,7 @@ impl Component for DateTimeComponent {
         }
     }
 
-    async fn start(&self, ctx: WinbarContext, hwnd: HWND, rect: RECT) {
+    async fn start(&self, ctx: WinbarContext, _hwnd: HWND, _rect: RECT) {
         let mut interval = time::interval(Duration::from_millis(500));
         loop {
             // first tick completes immediately

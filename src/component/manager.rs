@@ -1,16 +1,12 @@
-use std::sync::{atomic::Ordering, Arc, Mutex};
+use std::sync::{atomic::Ordering, Arc};
 
-use getset::Getters;
-use tokio::task::{self, JoinSet, LocalSet};
+use tokio::task::LocalSet;
 use windows::Win32::{
     Foundation::{HWND, RECT},
     Graphics::Gdi::HDC,
 };
 
-use crate::{
-    winbar::{self, WinbarContext},
-    COMPONENT_GAP, HEIGHT, WIDTH,
-};
+use crate::{winbar::WinbarContext, COMPONENT_GAP, HEIGHT, WIDTH};
 
 use super::Component;
 
@@ -146,6 +142,5 @@ impl ComponentManager {
                 };
                 curr_loc_x += component_width + gap;
             });
-
     }
 }

@@ -1,17 +1,16 @@
 use std::sync::{
     atomic::Ordering,
     mpsc::{Receiver, Sender},
-    Mutex,
 };
 
 use getset::Getters;
-use tokio::task::JoinSet;
+
 use windows::{
     core::w,
     Win32::{
-        Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, WPARAM},
+        Foundation::{COLORREF, HWND, LPARAM, LRESULT, WPARAM},
         Graphics::Gdi::{
-            BeginPaint, CreateSolidBrush, EndPaint, InvalidateRect, UpdateWindow, PAINTSTRUCT,
+            BeginPaint, CreateSolidBrush, EndPaint, InvalidateRect, PAINTSTRUCT,
         },
         System::{
             LibraryLoader::GetModuleHandleW,
@@ -27,8 +26,7 @@ use windows::{
 };
 
 use crate::{
-    component::Component, windows_api::WindowsApi, COMPONENT_GAP, COMPONENT_MANAGER, HEIGHT,
-    RUNNING, TRANSPARENT_COLOR, WIDTH,
+    windows_api::WindowsApi, COMPONENT_MANAGER, HEIGHT, TRANSPARENT_COLOR, WIDTH,
 };
 
 pub enum WinbarAction {
