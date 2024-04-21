@@ -9,9 +9,7 @@ use windows::{
     core::w,
     Win32::{
         Foundation::{COLORREF, HWND, LPARAM, LRESULT, WPARAM},
-        Graphics::Gdi::{
-            BeginPaint, CreateSolidBrush, EndPaint, InvalidateRect, PAINTSTRUCT,
-        },
+        Graphics::Gdi::{BeginPaint, CreateSolidBrush, EndPaint, InvalidateRect, PAINTSTRUCT},
         System::{
             LibraryLoader::GetModuleHandleW,
             Threading::{GetStartupInfoW, STARTUPINFOW},
@@ -19,15 +17,13 @@ use windows::{
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, DispatchMessageW, PeekMessageW, PostQuitMessage,
             RegisterClassW, SetLayeredWindowAttributes, ShowWindow, TranslateMessage, LWA_COLORKEY,
-            MSG, PM_REMOVE, SW_SHOWDEFAULT, WM_CLOSE, WM_DESTROY, WM_ERASEBKGND, WM_PAINT,
-            WNDCLASSW, WS_EX_LAYERED, WS_EX_TOOLWINDOW, WS_POPUP, WS_VISIBLE,
+            MSG, PM_REMOVE, SW_SHOWDEFAULT, WM_CLOSE, WM_DESTROY, WM_PAINT, WNDCLASSW,
+            WS_EX_LAYERED, WS_EX_TOOLWINDOW, WS_POPUP, WS_VISIBLE,
         },
     },
 };
 
-use crate::{
-    windows_api::WindowsApi, COMPONENT_MANAGER, HEIGHT, TRANSPARENT_COLOR, WIDTH,
-};
+use crate::{windows_api::WindowsApi, COMPONENT_MANAGER, HEIGHT, TRANSPARENT_COLOR, WIDTH};
 
 pub enum WinbarAction {
     UpdateWindow,
@@ -141,9 +137,9 @@ pub extern "system" fn window_proc(
 
                 EndPaint(hwnd, &mut ps);
             }
-            WM_ERASEBKGND => {
-                return LRESULT(1);
-            }
+            // WM_ERASEBKGND => {
+            //     return LRESULT(1);
+            // }
             WM_DESTROY => {
                 PostQuitMessage(0);
             }

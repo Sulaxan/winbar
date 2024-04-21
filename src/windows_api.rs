@@ -1,23 +1,21 @@
+use std::mem::MaybeUninit;
+
 use windows::{
     core::HSTRING,
     Win32::{
         Foundation::COLORREF,
         Graphics::{
-            self,
             Gdi::{
                 CreateFontW, CreatePen, CreateSolidBrush, SelectObject, SetBkColor, SetTextColor,
                 ANSI_CHARSET, CLIP_DEFAULT_PRECIS, DEFAULT_PITCH, FF_DONTCARE, FW_DONTCARE, HDC,
                 OUT_TT_PRECIS, PROOF_QUALITY, PS_SOLID,
             },
-            GdiPlus::{
-                GdipDrawRectangleI, GdipDrawString, GdipFillRectangle, GdiplusShutdown,
-                GdiplusStartup, GdiplusStartupInput, GdiplusStartupOutput, GpBrush, GpGraphics,
-            },
+            GdiPlus::{GdiplusShutdown, GdiplusStartup, GdiplusStartupInput},
         },
     },
 };
 
-use crate::{BACKGROUND, FONT_NAME, FOREGROUND, TRANSPARENT_COLOR};
+use crate::{BACKGROUND, FONT_NAME, FOREGROUND};
 
 pub struct WindowsApi {}
 
@@ -28,12 +26,12 @@ impl WindowsApi {
 
     pub fn set_default_styles(hdc: HDC) {
         unsafe {
-            let pen = CreatePen(PS_SOLID, 0, COLORREF(BACKGROUND.to_single_rgb()));
-            let brush = CreateSolidBrush(COLORREF(BACKGROUND.to_single_rgb()));
+            let pen = CreatePen(PS_SOLID, 0, COLORREF(BACKGROUND.bgr()));
+            let brush = CreateSolidBrush(COLORREF(BACKGROUND.bgr()));
 
             SelectObject(hdc, pen);
             SelectObject(hdc, brush);
-            SetBkColor(hdc, COLORREF(BACKGROUND.to_single_rgb()));
+            SetBkColor(hdc, COLORREF(BACKGROUND.bgr()));
             // SetBkColor(hdc, COLORREF(TRANSPARENT_COLOR));
 
             // let font = CreateFontIndirectW(&LOGFONTW {
@@ -61,7 +59,7 @@ impl WindowsApi {
 
             SelectObject(hdc, font);
 
-            SetTextColor(hdc, COLORREF(FOREGROUND.to_single_rgb()));
+            SetTextColor(hdc, COLORREF(FOREGROUND.bgr()));
         }
     }
 
@@ -75,9 +73,10 @@ impl WindowsApi {
         };
 
         let mut token: usize = 0;
-        let mut output = GdiplusStartupOutput::default();
+        let mut output = MaybeUninit::uninit();
         unsafe {
-            GdiplusStartup(&mut token, &input, &mut output);
+            let status = GdiplusStartup(&mut token, &input, output.as_mut_ptr());
+            println!("GDI+ Status: {:?}", status);
         }
 
         token

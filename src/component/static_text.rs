@@ -4,18 +4,14 @@ use async_trait::async_trait;
 use windows::Win32::{
     Foundation::{HWND, RECT, SIZE},
     Graphics::{
-        Gdi::{
-            DrawTextW, GetTextExtentPoint32W, RoundRect, DT_CENTER, DT_SINGLELINE, DT_VCENTER, HDC,
-        },
+        Gdi::{DrawTextW, GetTextExtentPoint32W, DT_CENTER, DT_SINGLELINE, DT_VCENTER, HDC},
         GdiPlus::{
-            GdipCloneBrush, GdipCreateFromHDC, GdipCreatePen1, GdipCreateSolidFill,
-            GdipDrawRectangle, GdipDrawString, GdipFillRectangle, GdipGetBrushType,
-            GdipGetPenBrushFill, GpBrush, GpGraphics, GpSolidFill, RectF, Unit,
+            GdipCreateFromHDC, GdipCreatePen1, GdipFillRectangle, GdipGetPenBrushFill, UnitPixel,
         },
     },
 };
 
-use crate::{color::Color, winbar::WinbarContext, windows_api::WindowsApi};
+use crate::{winbar::WinbarContext, windows_api::WindowsApi, BACKGROUND};
 
 use super::Component;
 
@@ -43,7 +39,7 @@ impl Component for StaticTextComponent {
         }
     }
 
-    fn draw(&self, _hwnd: HWND, rect: RECT, hdc: HDC) {
+    fn draw(&self, _hwnd: HWND, mut rect: RECT, hdc: HDC) {
         unsafe {
             let mut graphics = MaybeUninit::uninit();
             GdipCreateFromHDC(hdc, graphics.as_mut_ptr());
@@ -52,17 +48,7 @@ impl Component for StaticTextComponent {
             let g = graphics.assume_init();
 
             let mut bg_pen = MaybeUninit::uninit();
-            GdipCreatePen1(
-                Color::Rgb {
-                    r: 15,
-                    g: 15,
-                    b: 15,
-                }
-                .to_single_rgb(),
-                15.0,
-                Unit::default(),
-                bg_pen.as_mut_ptr(),
-            );
+            GdipCreatePen1(BACKGROUND.argb(), 1.0, UnitPixel, bg_pen.as_mut_ptr());
 
             let pen = bg_pen.assume_init();
 
@@ -82,12 +68,12 @@ impl Component for StaticTextComponent {
 
             // RoundRect(hdc, rect.left, rect.top, rect.right, rect.bottom, 10, 10);
 
-            // DrawTextW(
-            //     hdc,
-            //     &mut WindowsApi::str_to_u16_slice(&self.text),
-            //     &mut rect,
-            //     DT_SINGLELINE | DT_VCENTER | DT_CENTER,
-            // );
+            DrawTextW(
+                hdc,
+                &mut WindowsApi::str_to_u16_slice(&self.text),
+                &mut rect,
+                DT_SINGLELINE | DT_VCENTER | DT_CENTER,
+            );
         }
     }
 
