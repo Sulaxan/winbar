@@ -1,3 +1,6 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
 pub enum Color {
     Rgb { r: u32, g: u32, b: u32 },
     Argb { r: u32, g: u32, b: u32, alpha: u32 },

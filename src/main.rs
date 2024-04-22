@@ -35,23 +35,26 @@ pub mod windows_api;
 const TRANSPARENT_COLOR: u32 = 0;
 const WIDTH: AtomicI32 = AtomicI32::new(2560);
 const HEIGHT: AtomicI32 = AtomicI32::new(25);
+const POSITION_X: AtomicI32 = AtomicI32::new(0);
+const POSITION_Y: AtomicI32 = AtomicI32::new(0);
 const COMPONENT_GAP: AtomicI32 = AtomicI32::new(10);
-const BACKGROUND: Color = Color::Rgb {
-    r: 23,
-    g: 23,
-    b: 23,
-};
-const FOREGROUND: Color = Color::Rgb {
-    r: 33,
-    g: 181,
-    b: 80,
-};
-const FONT_NAME: &str = "Segoe UI Variable";
 
 lazy_static! {
     static ref WINBAR_HWND: Arc<Mutex<HWND>> = Arc::new(Mutex::new(HWND(0)));
     static ref COMPONENT_MANAGER: Arc<Mutex<ComponentManager>> =
         Arc::new(Mutex::new(ComponentManager::new()));
+    static ref DEFAULT_BG_COLOR: Arc<Mutex<Color>> = Arc::new(Mutex::new(Color::Rgb {
+        r: 23,
+        g: 23,
+        b: 23,
+    }));
+    static ref DEFAULT_FG_COLOR: Arc<Mutex<Color>> = Arc::new(Mutex::new(Color::Rgb {
+        r: 33,
+        g: 181,
+        b: 80,
+    }));
+    static ref DEFAULT_FONT: Arc<Mutex<String>> =
+        Arc::new(Mutex::new("Segoe UI Variable".to_string()));
 }
 
 fn main() -> anyhow::Result<()> {

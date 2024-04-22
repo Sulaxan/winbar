@@ -17,7 +17,7 @@ use windows::{
     },
 };
 
-use crate::{BACKGROUND, FONT_NAME, FOREGROUND};
+use crate::{DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT};
 
 pub struct WindowsApi {}
 
@@ -28,12 +28,12 @@ impl WindowsApi {
 
     pub fn set_default_styles(hdc: HDC) {
         unsafe {
-            let pen = CreatePen(PS_SOLID, 0, COLORREF(BACKGROUND.bgr()));
-            let brush = CreateSolidBrush(COLORREF(BACKGROUND.bgr()));
+            let pen = CreatePen(PS_SOLID, 0, COLORREF(DEFAULT_BG_COLOR.bgr()));
+            let brush = CreateSolidBrush(COLORREF(DEFAULT_BG_COLOR.bgr()));
 
             SelectObject(hdc, pen);
             SelectObject(hdc, brush);
-            SetBkColor(hdc, COLORREF(BACKGROUND.bgr()));
+            SetBkColor(hdc, COLORREF(DEFAULT_BG_COLOR.bgr()));
             // SetBkColor(hdc, COLORREF(TRANSPARENT_COLOR));
 
             // let font = CreateFontIndirectW(&LOGFONTW {
@@ -56,12 +56,12 @@ impl WindowsApi {
                 CLIP_DEFAULT_PRECIS.0.into(),
                 PROOF_QUALITY.0.into(),
                 DEFAULT_PITCH.0 as u32 | FF_DONTCARE.0 as u32,
-                &HSTRING::from(FONT_NAME),
+                &HSTRING::from(DEFAULT_FONT),
             );
 
             SelectObject(hdc, font);
 
-            SetTextColor(hdc, COLORREF(FOREGROUND.bgr()));
+            SetTextColor(hdc, COLORREF(DEFAULT_FG_COLOR.bgr()));
         }
     }
 

@@ -11,7 +11,7 @@ use windows::Win32::{
     },
 };
 
-use crate::{winbar::WinbarContext, windows_api::WindowsApi, BACKGROUND};
+use crate::{winbar::WinbarContext, windows_api::WindowsApi, DEFAULT_BG_COLOR};
 
 use super::Component;
 
@@ -48,7 +48,7 @@ impl Component for StaticTextComponent {
             let g = graphics.assume_init();
 
             let mut bg_pen = MaybeUninit::uninit();
-            GdipCreatePen1(BACKGROUND.argb(), 1.0, UnitPixel, bg_pen.as_mut_ptr());
+            GdipCreatePen1(DEFAULT_BG_COLOR.argb(), 1.0, UnitPixel, bg_pen.as_mut_ptr());
 
             let pen = bg_pen.assume_init();
 
