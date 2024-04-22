@@ -1,8 +1,7 @@
 use std::{
     sync::{
         atomic::{AtomicBool, AtomicI32, Ordering},
-        mpsc::{self},
-        Arc, Mutex,
+        mpsc, Arc, Mutex,
     },
     thread,
 };
@@ -15,6 +14,8 @@ use component::{
 };
 use lazy_static::lazy_static;
 use tokio::runtime;
+use tracing::{instrument};
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
 use winbar::{WinbarAction, WinbarContext};
 use windows::Win32::{
     Foundation::HWND,
@@ -56,65 +57,99 @@ lazy_static! {
         Arc::new(Mutex::new(ComponentManager::new()));
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let (stdout_writer, _guard) = tracing_appender::non_blocking(std::io::stdout());
+    tracing_subscriber::registry()
+        .with(fmt::layer().with_writer(stdout_writer))
+        // .with(EnvFilter::from_default_env())
+        .init();
+
+    tracing::info!("Starting GDI+");
     let token = WindowsApi::startup_gdiplus();
+    tracing::debug!("GDI+ token: {}", token);
 
     unsafe {
-        SetConsoleCtrlHandler(Some(ctrl_handler), true).unwrap();
+        SetConsoleCtrlHandler(Some(ctrl_handler), true)?;
     }
 
-    let mut manager = COMPONENT_MANAGER.lock().unwrap();
-    manager.add(
-        ComponentLocation::LEFT,
-        Arc::new(StaticTextComponent::new("left".to_owned())),
-    );
-    manager.add(
-        ComponentLocation::MIDDLE,
-        Arc::new(StaticTextComponent::new("middle".to_owned())),
-    );
-    manager.add(
-        ComponentLocation::RIGHT,
-        Arc::new(StaticTextComponent::new("right".to_owned())),
-    );
-    manager.add(
-        ComponentLocation::RIGHT,
-        Arc::new(DateTimeComponent::new("%F %r".to_owned())),
-    );
-    drop(manager);
+    tracing::info!("Adding components");
+    match COMPONENT_MANAGER.lock() {
+        Ok(mut manager) => {
+            manager.add(
+                ComponentLocation::LEFT,
+                Arc::new(StaticTextComponent::new("left".to_owned())),
+            );
+            manager.add(
+                ComponentLocation::MIDDLE,
+                Arc::new(StaticTextComponent::new("middle".to_owned())),
+            );
+            manager.add(
+                ComponentLocation::RIGHT,
+                Arc::new(StaticTextComponent::new("right".to_owned())),
+            );
+            manager.add(
+                ComponentLocation::RIGHT,
+                Arc::new(DateTimeComponent::new("%F %r".to_owned())),
+            );
+        }
+        Err(e) => {
+            tracing::error!("Error obtaining component manager lock: {}", e)
+        }
+    }
 
+    tracing::info!("Initializing window");
     let winbar_hwnd = winbar::create_window();
     {
-        let mut hwnd = WINBAR_HWND.lock().unwrap();
+        let mut hwnd = WINBAR_HWND.lock()?;
         *hwnd = winbar_hwnd;
     }
 
     let (send, recv) = mpsc::channel::<WinbarAction>();
     let winbar_ctx = WinbarContext::new(send);
 
+    tracing::info!("Starting component runner thread");
     thread::spawn(move || {
         let rt = runtime::Runtime::new().unwrap();
-        let mut manager = COMPONENT_MANAGER.lock().unwrap();
-        let set = manager.start(winbar_ctx, winbar_hwnd.clone());
-        drop(manager);
+        match COMPONENT_MANAGER.lock() {
+            Ok(mut manager) => {
+                let set = manager.start(winbar_ctx, winbar_hwnd.clone());
+                drop(manager);
 
-        rt.block_on(set);
+                rt.block_on(set);
+            }
+            Err(e) => {
+                tracing::error!("Error obtaining component manager lock {}", e);
+            }
+        }
     });
 
+    tracing::info!("Starting window listener");
     winbar::listen(winbar_hwnd, recv);
 
+    tracing::info!("Shutting down GDI+");
     WindowsApi::shutdown_gdiplus(token);
+
+    Ok(())
 }
 
+#[instrument(level = "trace", name = "windows_ctrl_handler_function")]
 pub extern "system" fn ctrl_handler(ctrltype: u32) -> BOOL {
     match ctrltype {
         CTRL_C_EVENT => {
-            WINBAR_HWND
-                .lock()
-                .and_then(|hwnd| unsafe {
-                    PostMessageW(*hwnd, WM_CLOSE, WPARAM(0), LPARAM(0)).unwrap();
-                    Ok(())
-                })
-                .unwrap();
+            match WINBAR_HWND.lock().and_then(|hwnd| unsafe {
+                match PostMessageW(*hwnd, WM_CLOSE, WPARAM(0), LPARAM(0)) {
+                    Err(e) => {
+                        tracing::error!("Error posting WM_CLOSE message: {}", e);
+                    }
+                    _ => {}
+                }
+                Ok(())
+            }) {
+                Err(e) => {
+                    tracing::error!("Error obtaining winbar hwnd lock: {}", e);
+                }
+                _ => {}
+            }
             RUNNING.store(false, Ordering::SeqCst);
 
             true.into()

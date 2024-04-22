@@ -1,6 +1,7 @@
 use std::sync::{atomic::Ordering, Arc};
 
 use tokio::task::LocalSet;
+use tracing::instrument;
 use windows::Win32::{
     Foundation::{HWND, RECT},
     Graphics::Gdi::HDC,
@@ -34,7 +35,9 @@ impl ComponentManager {
         }
     }
 
+    #[instrument(level = "trace", skip(self))]
     pub fn draw_all(&self, hwnd: HWND, hdc: HDC) {
+        tracing::debug!("Drawing {} components", self.components.len());
         self.components
             .iter()
             .for_each(|state| state.component.draw(hwnd, state.location, hdc))
@@ -68,6 +71,7 @@ impl ComponentManager {
         })
     }
 
+    #[instrument(level = "trace", skip(self))]
     pub fn compute_locations(&mut self, hwnd: HWND, hdc: HDC) {
         let width = WIDTH.load(Ordering::SeqCst);
         let height = HEIGHT.load(Ordering::SeqCst);

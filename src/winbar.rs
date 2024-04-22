@@ -5,6 +5,7 @@ use std::sync::{
 
 use getset::Getters;
 
+use tracing::instrument;
 use windows::{
     core::w,
     Win32::{
@@ -84,6 +85,7 @@ pub fn create_window() -> HWND {
     }
 }
 
+#[instrument(name = "window_listener")]
 pub fn listen(hwnd: HWND, recv: Receiver<WinbarAction>) {
     let mut msg = MSG::default();
 
@@ -109,10 +111,10 @@ pub fn listen(hwnd: HWND, recv: Receiver<WinbarAction>) {
         }
     }
 
-    println!("Winbar shutting down...");
-    //TODO: shut down the components
+    tracing::info!("Winbar shutting down...");
 }
 
+#[instrument(level = "trace", name = "window_process_function")]
 pub extern "system" fn window_proc(
     hwnd: HWND,
     msg: u32,
@@ -122,20 +124,27 @@ pub extern "system" fn window_proc(
     unsafe {
         match msg {
             WM_PAINT => {
+                tracing::trace!("Starting painting...");
                 let mut ps = PAINTSTRUCT::default();
                 let hdc = BeginPaint(hwnd, &mut ps);
 
                 WindowsApi::set_default_styles(hdc);
 
-                let mut manager = COMPONENT_MANAGER.lock().unwrap();
+                match COMPONENT_MANAGER.lock() {
+                    Ok(mut manager) => {
+                        // FIXME: not ideal to compute locations every time... need to change in the
+                        // future
+                        manager.compute_locations(hwnd, hdc);
 
-                // FIXME: not ideal to compute locations every time... need to change in the
-                // future
-                manager.compute_locations(hwnd, hdc);
-
-                manager.draw_all(hwnd, hdc);
+                        manager.draw_all(hwnd, hdc);
+                    }
+                    Err(e) => {
+                        tracing::error!("Error obtaining component manager lock: {}", e);
+                    }
+                }
 
                 EndPaint(hwnd, &mut ps);
+                tracing::trace!("Finished painting");
             }
             // WM_ERASEBKGND => {
             //     return LRESULT(1);

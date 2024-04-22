@@ -1,5 +1,6 @@
 use std::mem::MaybeUninit;
 
+use tracing::instrument;
 use windows::{
     core::HSTRING,
     Win32::{
@@ -64,6 +65,7 @@ impl WindowsApi {
     }
 
     // inspired from: https://github.com/davidrios/gdiplus-rs
+    #[instrument(name = "windows_api_gdi+_init")]
     pub fn startup_gdiplus() -> usize {
         let input = GdiplusStartupInput {
             GdiplusVersion: 1,
@@ -76,7 +78,7 @@ impl WindowsApi {
         let mut output = MaybeUninit::uninit();
         unsafe {
             let status = GdiplusStartup(&mut token, &input, output.as_mut_ptr());
-            println!("GDI+ Status: {:?}", status);
+            tracing::debug!("GDI+ Status: {:?}", status);
         }
 
         token
