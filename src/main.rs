@@ -1,8 +1,5 @@
 use std::{
-    sync::{
-        atomic::{AtomicBool, AtomicI32, Ordering},
-        mpsc, Arc, Mutex,
-    },
+    sync::{atomic::AtomicI32, mpsc, Arc, Mutex},
     thread,
 };
 
@@ -14,7 +11,7 @@ use component::{
 };
 use lazy_static::lazy_static;
 use tokio::runtime;
-use tracing::{instrument};
+use tracing::instrument;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
 use winbar::{WinbarAction, WinbarContext};
 use windows::Win32::{
@@ -29,6 +26,7 @@ use windows_api::WindowsApi;
 
 pub mod color;
 pub mod component;
+pub mod config;
 pub mod server;
 pub mod winbar;
 pub mod windows_api;
@@ -48,8 +46,6 @@ const FOREGROUND: Color = Color::Rgb {
     b: 80,
 };
 const FONT_NAME: &str = "Segoe UI Variable";
-
-const RUNNING: AtomicBool = AtomicBool::new(true);
 
 lazy_static! {
     static ref WINBAR_HWND: Arc<Mutex<HWND>> = Arc::new(Mutex::new(HWND(0)));
@@ -150,7 +146,6 @@ pub extern "system" fn ctrl_handler(ctrltype: u32) -> BOOL {
                 }
                 _ => {}
             }
-            RUNNING.store(false, Ordering::SeqCst);
 
             true.into()
         }
