@@ -1,5 +1,6 @@
 use std::mem::MaybeUninit;
 
+use anyhow::{bail, Result};
 use tracing::instrument;
 use windows::{
     core::HSTRING,
@@ -11,7 +12,7 @@ use windows::{
                 ANSI_CHARSET, CLIP_DEFAULT_PRECIS, DEFAULT_PITCH, FF_DONTCARE, FW_DONTCARE, HDC,
                 OUT_TT_PRECIS, PROOF_QUALITY, PS_SOLID,
             },
-            GdiPlus::{GdiplusShutdown, GdiplusStartup, GdiplusStartupInput},
+            GdiPlus::{GdiplusShutdown, GdiplusStartup, GdiplusStartupInput, Status},
         },
     },
 };
@@ -66,7 +67,7 @@ impl WindowsApi {
 
     // inspired from: https://github.com/davidrios/gdiplus-rs
     #[instrument(name = "windows_api_gdi+_init")]
-    pub fn startup_gdiplus() -> usize {
+    pub fn startup_gdiplus() -> Result<usize> {
         let input = GdiplusStartupInput {
             GdiplusVersion: 1,
             SuppressBackgroundThread: false.into(),
@@ -78,10 +79,12 @@ impl WindowsApi {
         let mut output = MaybeUninit::uninit();
         unsafe {
             let status = GdiplusStartup(&mut token, &input, output.as_mut_ptr());
-            tracing::debug!("GDI+ Status: {:?}", status);
+            if status != Status(0) {
+                bail!("GDI+ startup returned non-zero: {:?}", status);
+            }
         }
 
-        token
+        Ok(token)
     }
 
     pub fn shutdown_gdiplus(token: usize) {

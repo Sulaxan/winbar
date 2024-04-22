@@ -3,6 +3,7 @@ use std::{
     thread,
 };
 
+use anyhow::{anyhow, Context};
 use color::Color;
 use component::{
     datetime::DateTimeComponent,
@@ -53,7 +54,7 @@ lazy_static! {
         Arc::new(Mutex::new(ComponentManager::new()));
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> anyhow::Result<()> {
     let (stdout_writer, _guard) = tracing_appender::non_blocking(std::io::stdout());
     tracing_subscriber::registry()
         .with(fmt::layer().with_writer(stdout_writer))
@@ -61,11 +62,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     tracing::info!("Starting GDI+");
-    let token = WindowsApi::startup_gdiplus();
+    let token = WindowsApi::startup_gdiplus()?;
     tracing::debug!("GDI+ token: {}", token);
 
     unsafe {
-        SetConsoleCtrlHandler(Some(ctrl_handler), true)?;
+        SetConsoleCtrlHandler(Some(ctrl_handler), true)
+            .with_context(|| "Could not set console ctrl handler")?;
     }
 
     tracing::info!("Adding components");
@@ -96,7 +98,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("Initializing window");
     let winbar_hwnd = winbar::create_window();
     {
-        let mut hwnd = WINBAR_HWND.lock()?;
+        let mut hwnd = WINBAR_HWND
+            .lock()
+            .map_err(|e| anyhow!("Could not obtain winbar hwnd lock: {}", e))?;
         *hwnd = winbar_hwnd;
     }
 
