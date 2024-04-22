@@ -28,6 +28,7 @@ use windows_api::WindowsApi;
 
 pub mod color;
 pub mod component;
+pub mod server;
 pub mod winbar;
 pub mod windows_api;
 
