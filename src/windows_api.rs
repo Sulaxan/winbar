@@ -27,20 +27,27 @@ impl WindowsApi {
     }
 
     pub fn set_default_styles(hdc: HDC) {
+        let default_bg_color = {
+            let color = DEFAULT_BG_COLOR.lock().unwrap();
+            color.bgr()
+        };
+        let default_fg_color = {
+            let color = DEFAULT_FG_COLOR.lock().unwrap();
+            color.bgr()
+        };
+        let default_font = {
+            let font = DEFAULT_FONT.lock().unwrap();
+            font.to_string()
+        };
+
         unsafe {
-            let pen = CreatePen(PS_SOLID, 0, COLORREF(DEFAULT_BG_COLOR.bgr()));
-            let brush = CreateSolidBrush(COLORREF(DEFAULT_BG_COLOR.bgr()));
+            let pen = CreatePen(PS_SOLID, 0, COLORREF(default_bg_color));
+            let brush = CreateSolidBrush(COLORREF(default_bg_color));
 
             SelectObject(hdc, pen);
             SelectObject(hdc, brush);
-            SetBkColor(hdc, COLORREF(DEFAULT_BG_COLOR.bgr()));
+            SetBkColor(hdc, COLORREF(default_bg_color));
             // SetBkColor(hdc, COLORREF(TRANSPARENT_COLOR));
-
-            // let font = CreateFontIndirectW(&LOGFONTW {
-            //     lfWeight: FW_NORMAL.0 as i32,
-            //     lfQuality: FONT_QUALITY(PROOF_QUALITY.0),
-            //     ..Default::default()
-            // });
 
             let font = CreateFontW(
                 18,
@@ -56,17 +63,17 @@ impl WindowsApi {
                 CLIP_DEFAULT_PRECIS.0.into(),
                 PROOF_QUALITY.0.into(),
                 DEFAULT_PITCH.0 as u32 | FF_DONTCARE.0 as u32,
-                &HSTRING::from(DEFAULT_FONT),
+                &HSTRING::from(default_font),
             );
 
             SelectObject(hdc, font);
 
-            SetTextColor(hdc, COLORREF(DEFAULT_FG_COLOR.bgr()));
+            SetTextColor(hdc, COLORREF(default_fg_color));
         }
     }
 
     // inspired from: https://github.com/davidrios/gdiplus-rs
-    #[instrument(name = "windows_api_gdi+_init")]
+    #[instrument(name = "windows_api_gdiplus_init")]
     pub fn startup_gdiplus() -> Result<usize> {
         let input = GdiplusStartupInput {
             GdiplusVersion: 1,

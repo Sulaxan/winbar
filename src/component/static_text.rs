@@ -40,6 +40,11 @@ impl Component for StaticTextComponent {
     }
 
     fn draw(&self, _hwnd: HWND, mut rect: RECT, hdc: HDC) {
+        let default_bg_color = {
+            let color = DEFAULT_BG_COLOR.lock().unwrap();
+            color.argb()
+        };
+
         unsafe {
             let mut graphics = MaybeUninit::uninit();
             GdipCreateFromHDC(hdc, graphics.as_mut_ptr());
@@ -48,7 +53,7 @@ impl Component for StaticTextComponent {
             let g = graphics.assume_init();
 
             let mut bg_pen = MaybeUninit::uninit();
-            GdipCreatePen1(DEFAULT_BG_COLOR.argb(), 1.0, UnitPixel, bg_pen.as_mut_ptr());
+            GdipCreatePen1(default_bg_color, 1.0, UnitPixel, bg_pen.as_mut_ptr());
 
             let pen = bg_pen.assume_init();
 

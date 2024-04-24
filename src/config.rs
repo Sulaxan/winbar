@@ -8,7 +8,10 @@ use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    color::Color, component::{datetime::DateTimeComponent, static_text::StaticTextComponent, Component}, COMPONENT_GAP, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT, HEIGHT, POSITION_X, POSITION_Y, WIDTH
+    color::Color,
+    component::{datetime::DateTimeComponent, static_text::StaticTextComponent, Component},
+    COMPONENT_GAP, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT, HEIGHT, POSITION_X,
+    POSITION_Y, WIDTH,
 };
 
 fn default_component_gap() -> i32 {
@@ -51,19 +54,19 @@ impl Config {
             let mut bg_color = DEFAULT_BG_COLOR
                 .lock()
                 .map_err(|e| anyhow!("Could not obtain default background color lock: {}", e))?;
-            *bg_color = self.default_bg_color;
+            *bg_color = self.default_bg_color.clone();
         }
         {
             let mut fg_color = DEFAULT_FG_COLOR
                 .lock()
                 .map_err(|e| anyhow!("Could not obtain default foreground color lock: {}", e))?;
-            *fg_color = self.default_fg_color;
+            *fg_color = self.default_fg_color.clone();
         }
         {
             let mut font = DEFAULT_FONT
                 .lock()
                 .map_err(|e| anyhow!("Could not obtain default foreground color lock: {}", e))?;
-            *font = self.default_font;
+            *font = self.default_font.to_string();
         }
 
         Ok(())
