@@ -1,11 +1,7 @@
-use std::sync::{
-    atomic::Ordering,
-    mpsc::{Receiver, Sender},
-};
-
-use getset::Getters;
+use std::sync::{atomic::Ordering, mpsc::Receiver};
 
 use tracing::instrument;
+use winbar::WinbarAction;
 use windows::{
     core::w,
     Win32::{
@@ -25,22 +21,6 @@ use windows::{
 };
 
 use crate::{windows_api::WindowsApi, COMPONENT_MANAGER, HEIGHT, TRANSPARENT_COLOR, WIDTH};
-
-pub enum WinbarAction {
-    UpdateWindow,
-}
-
-#[derive(Getters, Clone)]
-pub struct WinbarContext {
-    #[getset(get = "pub")]
-    sender: Sender<WinbarAction>,
-}
-
-impl WinbarContext {
-    pub fn new(sender: Sender<WinbarAction>) -> Self {
-        Self { sender }
-    }
-}
 
 pub fn create_window() -> HWND {
     unsafe {
@@ -96,6 +76,9 @@ pub fn listen(hwnd: HWND, recv: Receiver<WinbarAction>) {
                     // UpdateWindow(hwnd);
                     InvalidateRect(hwnd, None, true);
                 },
+                WinbarAction::Shutdown => {
+                    todo!()
+                }
             }
         }
 

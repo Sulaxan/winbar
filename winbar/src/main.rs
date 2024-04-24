@@ -4,8 +4,7 @@ use std::{
 };
 
 use anyhow::{anyhow, Context};
-use color::Color;
-use component::{
+use component_impl::{
     datetime::DateTimeComponent,
     manager::{ComponentLocation, ComponentManager},
     static_text::StaticTextComponent,
@@ -14,7 +13,7 @@ use lazy_static::lazy_static;
 use tokio::runtime;
 use tracing::instrument;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
-use winbar::{WinbarAction, WinbarContext};
+use winbar::{color::Color, WinbarAction, WinbarContext};
 use windows::Win32::{
     Foundation::HWND,
     System::Console::{SetConsoleCtrlHandler, CTRL_C_EVENT},
@@ -25,11 +24,10 @@ use windows::Win32::{
 };
 use windows_api::WindowsApi;
 
-pub mod color;
-pub mod component;
+pub mod component_impl;
 pub mod config;
+pub mod container;
 pub mod server;
-pub mod winbar;
 pub mod windows_api;
 
 const TRANSPARENT_COLOR: u32 = 0;
@@ -40,9 +38,6 @@ const POSITION_Y: AtomicI32 = AtomicI32::new(0);
 const COMPONENT_GAP: AtomicI32 = AtomicI32::new(10);
 
 lazy_static! {
-    static ref WINBAR_HWND: Arc<Mutex<HWND>> = Arc::new(Mutex::new(HWND(0)));
-    static ref COMPONENT_MANAGER: Arc<Mutex<ComponentManager>> =
-        Arc::new(Mutex::new(ComponentManager::new()));
     static ref DEFAULT_BG_COLOR: Arc<Mutex<Color>> = Arc::new(Mutex::new(Color::Rgb {
         r: 23,
         g: 23,
@@ -55,6 +50,9 @@ lazy_static! {
     }));
     static ref DEFAULT_FONT: Arc<Mutex<String>> =
         Arc::new(Mutex::new("Segoe UI Variable".to_string()));
+    static ref WINBAR_HWND: Arc<Mutex<HWND>> = Arc::new(Mutex::new(HWND(0)));
+    static ref COMPONENT_MANAGER: Arc<Mutex<ComponentManager>> =
+        Arc::new(Mutex::new(ComponentManager::new()));
 }
 
 fn main() -> anyhow::Result<()> {
@@ -78,15 +76,15 @@ fn main() -> anyhow::Result<()> {
         Ok(mut manager) => {
             manager.add(
                 ComponentLocation::LEFT,
-                Arc::new(StaticTextComponent::new("left".to_owned())),
+                Arc::new(StaticTextComponent::new("left".to_owned(), 10)),
             );
             manager.add(
                 ComponentLocation::MIDDLE,
-                Arc::new(StaticTextComponent::new("middle".to_owned())),
+                Arc::new(StaticTextComponent::new("middle".to_owned(), 10)),
             );
             manager.add(
                 ComponentLocation::RIGHT,
-                Arc::new(StaticTextComponent::new("right".to_owned())),
+                Arc::new(StaticTextComponent::new("right".to_owned(), 10)),
             );
             manager.add(
                 ComponentLocation::RIGHT,
@@ -99,7 +97,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     tracing::info!("Initializing window");
-    let winbar_hwnd = winbar::create_window();
+    let winbar_hwnd = container::create_window();
     {
         let mut hwnd = WINBAR_HWND
             .lock()
@@ -127,7 +125,7 @@ fn main() -> anyhow::Result<()> {
     });
 
     tracing::info!("Starting window listener");
-    winbar::listen(winbar_hwnd, recv);
+    container::listen(winbar_hwnd, recv);
 
     tracing::info!("Shutting down GDI+");
     WindowsApi::shutdown_gdiplus(token);

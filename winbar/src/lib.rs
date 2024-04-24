@@ -1,14 +1,30 @@
+use std::sync::mpsc::Sender;
+
 use async_trait::async_trait;
+use getset::Getters;
 use windows::Win32::{
     Foundation::{HWND, RECT},
     Graphics::Gdi::HDC,
 };
 
-use crate::winbar::WinbarContext;
+pub mod color;
 
-pub mod datetime;
-pub mod manager;
-pub mod static_text;
+pub enum WinbarAction {
+    UpdateWindow,
+    Shutdown,
+}
+
+#[derive(Getters, Clone)]
+pub struct WinbarContext {
+    #[getset(get = "pub")]
+    sender: Sender<WinbarAction>,
+}
+
+impl WinbarContext {
+    pub fn new(sender: Sender<WinbarAction>) -> Self {
+        Self { sender }
+    }
+}
 
 #[async_trait]
 pub trait Component {

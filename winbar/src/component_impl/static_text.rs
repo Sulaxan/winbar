@@ -1,6 +1,7 @@
 use std::mem::MaybeUninit;
 
 use async_trait::async_trait;
+use winbar::{Component, WinbarContext};
 use windows::Win32::{
     Foundation::{HWND, RECT, SIZE},
     Graphics::{
@@ -11,19 +12,16 @@ use windows::Win32::{
     },
 };
 
-use crate::{winbar::WinbarContext, windows_api::WindowsApi, DEFAULT_BG_COLOR};
-
-use super::Component;
-
-const PADDING_X: i32 = 10;
+use crate::{windows_api::WindowsApi, DEFAULT_BG_COLOR};
 
 pub struct StaticTextComponent {
     text: String,
+    padding_x: i32,
 }
 
 impl StaticTextComponent {
-    pub fn new(text: String) -> Self {
-        Self { text }
+    pub fn new(text: String, padding_x: i32) -> Self {
+        Self { text, padding_x }
     }
 }
 
@@ -35,7 +33,7 @@ impl Component for StaticTextComponent {
 
             GetTextExtentPoint32W(hdc, &WindowsApi::str_to_u16_slice(&self.text), &mut length);
 
-            length.cx + PADDING_X * 2
+            length.cx + self.padding_x * 2
         }
     }
 

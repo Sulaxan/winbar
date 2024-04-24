@@ -3,6 +3,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use chrono::Local;
 use tokio::time::{self};
+use winbar::{Component, WinbarAction, WinbarContext};
 use windows::Win32::{
     Foundation::{HWND, RECT, SIZE},
     Graphics::Gdi::{
@@ -10,12 +11,7 @@ use windows::Win32::{
     },
 };
 
-use crate::{
-    winbar::{WinbarAction, WinbarContext},
-    windows_api::WindowsApi,
-};
-
-use super::Component;
+use crate::windows_api::WindowsApi;
 
 pub struct DateTimeComponent {
     pub format: String,

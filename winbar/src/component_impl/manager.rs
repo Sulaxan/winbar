@@ -2,14 +2,13 @@ use std::sync::{atomic::Ordering, Arc};
 
 use tokio::task::LocalSet;
 use tracing::instrument;
+use winbar::{Component, WinbarContext};
 use windows::Win32::{
     Foundation::{HWND, RECT},
     Graphics::Gdi::HDC,
 };
 
-use crate::{winbar::WinbarContext, COMPONENT_GAP, HEIGHT, WIDTH};
-
-use super::Component;
+use crate::{COMPONENT_GAP, HEIGHT, WIDTH};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ComponentLocation {

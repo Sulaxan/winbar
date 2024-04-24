@@ -6,10 +6,10 @@ use std::{
 
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
+use winbar::{color::Color, Component};
 
 use crate::{
-    color::Color,
-    component::{datetime::DateTimeComponent, static_text::StaticTextComponent, Component},
+    component_impl::{datetime::DateTimeComponent, static_text::StaticTextComponent},
     COMPONENT_GAP, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT, HEIGHT, POSITION_X,
     POSITION_Y, WIDTH,
 };
@@ -77,6 +77,7 @@ impl Config {
 pub enum ComponentConfig {
     StaticText {
         text: String,
+        padding_x: i32,
     },
     DateTime {
         format: String,
@@ -88,7 +89,10 @@ pub enum ComponentConfig {
 impl ComponentConfig {
     pub fn to_component(&self) -> Arc<dyn Component> {
         match self {
-            Self::StaticText { text } => Arc::new(StaticTextComponent::new(text.to_string())),
+            Self::StaticText { text, padding_x } => Arc::new(StaticTextComponent::new(
+                text.to_string(),
+                padding_x.clone(),
+            )),
             Self::DateTime {
                 format,
                 fg_color: _,
