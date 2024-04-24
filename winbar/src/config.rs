@@ -9,7 +9,9 @@ use serde::{Deserialize, Serialize};
 use winbar::{color::Color, Component};
 
 use crate::{
-    component_impl::{datetime::DateTimeComponent, static_text::StaticTextComponent},
+    component_impl::{
+        datetime::DateTimeComponent, manager::ComponentLocation, static_text::StaticTextComponent,
+    },
     COMPONENT_GAP, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT, HEIGHT, POSITION_X,
     POSITION_Y, WIDTH,
 };
@@ -41,7 +43,7 @@ impl Config {
     }
 
     pub fn write(&self, path: PathBuf) -> Result<()> {
-        fs::write(path, serde_json::to_vec(self)?).with_context(|| "Could not write config")
+        fs::write(path, serde_json::to_vec_pretty(self)?).with_context(|| "Could not write config")
     }
 
     pub fn set_global_constants(&self) -> Result<()> {
@@ -73,20 +75,74 @@ impl Config {
     }
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            window_width: 1080,
+            window_height: 20,
+            position_x: 0,
+            position_y: 0,
+            component_gap: 10,
+            default_bg_color: Color::Rgb {
+                r: 23,
+                g: 23,
+                b: 23,
+            },
+            default_fg_color: Color::Rgb {
+                r: 33,
+                g: 181,
+                b: 80,
+            },
+            default_font: "Segoe IO Variable".to_string(),
+            components: vec![
+                ComponentConfig {
+                    location: ComponentLocation::LEFT,
+                    component: ComponentData::StaticText {
+                        text: "Winbar!".to_string(),
+                        padding_x: 10,
+                    },
+                },
+                ComponentConfig {
+                    location: ComponentLocation::LEFT,
+                    component: ComponentData::DateTime {
+                        format: "%F %r".to_string(),
+                        bg_color: Color::Rgb {
+                            r: 23,
+                            g: 23,
+                            b: 23,
+                        },
+                        fg_color: Color::Rgb {
+                            r: 33,
+                            g: 181,
+                            b: 80,
+                        },
+                    },
+                },
+            ],
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
-pub enum ComponentConfig {
+pub struct ComponentConfig {
+    pub location: ComponentLocation,
+    pub component: ComponentData,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum ComponentData {
     StaticText {
         text: String,
         padding_x: i32,
     },
     DateTime {
         format: String,
-        fg_color: Color,
         bg_color: Color,
+        fg_color: Color,
     },
 }
 
-impl ComponentConfig {
+impl ComponentData {
     pub fn to_component(&self) -> Arc<dyn Component> {
         match self {
             Self::StaticText { text, padding_x } => Arc::new(StaticTextComponent::new(

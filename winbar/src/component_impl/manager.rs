@@ -1,5 +1,6 @@
 use std::sync::{atomic::Ordering, Arc};
 
+use serde::{Deserialize, Serialize};
 use tokio::task::LocalSet;
 use tracing::instrument;
 use winbar::{Component, WinbarContext};
@@ -10,7 +11,7 @@ use windows::Win32::{
 
 use crate::{COMPONENT_GAP, HEIGHT, WIDTH};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ComponentLocation {
     LEFT,
     MIDDLE,

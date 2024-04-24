@@ -4,11 +4,14 @@ use std::{
 };
 
 use anyhow::{anyhow, Context};
+use clap::Parser;
+use cli::WinbarCli;
 use component_impl::{
     datetime::DateTimeComponent,
     manager::{ComponentLocation, ComponentManager},
     static_text::StaticTextComponent,
 };
+use config::Config;
 use lazy_static::lazy_static;
 use tokio::runtime;
 use tracing::instrument;
@@ -24,6 +27,7 @@ use windows::Win32::{
 };
 use windows_api::WindowsApi;
 
+pub mod cli;
 pub mod component_impl;
 pub mod config;
 pub mod container;
@@ -55,12 +59,38 @@ lazy_static! {
         Arc::new(Mutex::new(ComponentManager::new()));
 }
 
+pub fn read_config() -> anyhow::Result<()> {
+    let cli = WinbarCli::parse();
+    if cli.generate_config {
+        if cli.config_path.try_exists().unwrap() {
+            println!("You can only generate a config if it doesn't exist already!");
+            println!("If you're absolutely sure you want to generate the config, either provide a different config path or delete/rename your current config.");
+            std::process::exit(1);
+        }
+
+        let config = Config::default();
+        config.write(cli.config_path).unwrap();
+        println!("\nSuccessfully generated config!");
+        println!("\nIMPORTANT!!!");
+        println!(
+            "The config generated is a generic config, meaning it's not optimal for your system!"
+        );
+        println!("Make sure you open up the config and edit values to better suit it for you.");
+        println!("Refer to the GitHub for configuration help: https://github.com/Sulaxan/winbar\n");
+        std::process::exit(0);
+    }
+    let config = Config::read(cli.config_path)?;
+    config.set_global_constants()
+}
+
 fn main() -> anyhow::Result<()> {
     let (stdout_writer, _guard) = tracing_appender::non_blocking(std::io::stdout());
     tracing_subscriber::registry()
         .with(fmt::layer().with_writer(stdout_writer))
         // .with(EnvFilter::from_default_env())
         .init();
+
+    read_config()?;
 
     tracing::info!("Starting GDI+");
     let token = WindowsApi::startup_gdiplus()?;
