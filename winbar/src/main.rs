@@ -34,11 +34,11 @@ pub mod server;
 pub mod windows_api;
 
 const TRANSPARENT_COLOR: u32 = 0;
-const WIDTH: AtomicI32 = AtomicI32::new(2560);
-const HEIGHT: AtomicI32 = AtomicI32::new(25);
-const POSITION_X: AtomicI32 = AtomicI32::new(0);
-const POSITION_Y: AtomicI32 = AtomicI32::new(0);
-const COMPONENT_GAP: AtomicI32 = AtomicI32::new(10);
+static WIDTH: AtomicI32 = AtomicI32::new(2560);
+static HEIGHT: AtomicI32 = AtomicI32::new(25);
+static POSITION_X: AtomicI32 = AtomicI32::new(0);
+static POSITION_Y: AtomicI32 = AtomicI32::new(0);
+static COMPONENT_GAP: AtomicI32 = AtomicI32::new(10);
 
 lazy_static! {
     static ref DEFAULT_BG_COLOR: Arc<Mutex<Color>> = Arc::new(Mutex::new(Color::Rgb {
