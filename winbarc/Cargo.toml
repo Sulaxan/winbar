@@ -1,0 +1,11 @@
+[package]
+name = "winbarc"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+winbar = { path = "../winbar" }
+clap = { version = "4.5.4", features = ["cargo", "derive"] }
+tokio = { version = "1.37.0", features = ["rt-multi-thread", "sync", "macros"] }

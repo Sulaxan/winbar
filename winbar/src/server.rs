@@ -31,7 +31,7 @@ impl WinbarServer {
         })
     }
 
-    pub async fn start(&mut self) -> Result<()> {
+    pub async fn start_listening(&mut self) -> Result<()> {
         loop {
             let (mut stream, _) = self.listener.accept().await?;
             let ctx = self.ctx.clone();

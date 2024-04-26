@@ -1,18 +1,18 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum ServerMessage {
     UpdateWindow,
     Shutdown,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct WinbarServerPayload {
     pub id: u32,
     pub message: ServerMessage,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum ClientMessage {
     /// Denotes that the sent message was successful
     Success,
@@ -20,7 +20,7 @@ pub enum ClientMessage {
     Error(String),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct WinbarClientPayload {
     pub id: u32,
     pub message: ClientMessage,

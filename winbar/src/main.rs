@@ -16,7 +16,7 @@ use lazy_static::lazy_static;
 use tokio::runtime;
 use tracing::instrument;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
-use winbar::{color::Color, WinbarAction, WinbarContext};
+use winbar::{color::Color, WinbarAction, WinbarContext, DEFAULT_URL};
 use windows::Win32::{
     Foundation::HWND,
     System::Console::{SetConsoleCtrlHandler, CTRL_C_EVENT},
@@ -26,6 +26,8 @@ use windows::Win32::{
     UI::WindowsAndMessaging::{PostMessageW, WM_CLOSE},
 };
 use windows_api::WindowsApi;
+
+use crate::server::WinbarServer;
 
 pub mod cli;
 pub mod component_impl;
@@ -79,6 +81,7 @@ pub fn read_config() -> anyhow::Result<()> {
         println!("Refer to the GitHub for configuration help: https://github.com/Sulaxan/winbar\n");
         std::process::exit(0);
     }
+
     let config = Config::read(cli.config_path)?;
     config.set_global_constants()
 }
@@ -139,11 +142,12 @@ fn main() -> anyhow::Result<()> {
     let winbar_ctx = WinbarContext::new(send);
 
     tracing::info!("Starting component runner thread");
+    let cloned_ctx = winbar_ctx.clone();
     thread::spawn(move || {
         let rt = runtime::Runtime::new().unwrap();
         match COMPONENT_MANAGER.lock() {
             Ok(mut manager) => {
-                let set = manager.start(winbar_ctx, winbar_hwnd.clone());
+                let set = manager.start(cloned_ctx, winbar_hwnd.clone());
                 drop(manager);
 
                 rt.block_on(set);
@@ -152,6 +156,25 @@ fn main() -> anyhow::Result<()> {
                 tracing::error!("Error obtaining component manager lock {}", e);
             }
         }
+    });
+
+    tracing::info!("Starting server");
+    thread::spawn(move || {
+        let rt = runtime::Runtime::new().unwrap();
+
+        // need to block on here, otherwise the thread shuts down prematurely
+        rt.block_on(async move {
+            match WinbarServer::new(DEFAULT_URL, winbar_ctx).await {
+                Ok(mut server) => {
+                    if let Err(e) = server.start_listening().await {
+                        tracing::error!("Error while starting to listen for connections: {}", e);
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("Error while starting server: {}", e);
+                }
+            }
+        });
     });
 
     tracing::info!("Starting window listener");

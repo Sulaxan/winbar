@@ -12,26 +12,22 @@ use crate::protocol::{WinbarClientPayload, WinbarServerPayload};
 
 pub struct WinbarClient {
     response_handler: Arc<dyn Fn(WinbarClientPayload) + Sync + Send>,
-    stream_handle: Option<JoinHandle<()>>,
 }
 
 impl WinbarClient {
     pub fn new(response_handler: Arc<dyn Fn(WinbarClientPayload) + Sync + Send>) -> Self {
-        Self {
-            response_handler,
-            stream_handle: None,
-        }
+        Self { response_handler }
     }
 
     pub async fn start(
         &mut self,
         addr: &str,
         mut recv: Receiver<WinbarServerPayload>,
-    ) -> Result<()> {
+    ) -> Result<JoinHandle<()>> {
         let mut stream = TcpStream::connect(addr).await?;
         let response_handler = self.response_handler.clone();
 
-        self.stream_handle = Some(tokio::spawn(async move {
+        Ok(tokio::spawn(async move {
             let mut buf = vec![0; 4096];
             let (mut rx, mut wx) = stream.split();
 
@@ -48,8 +44,6 @@ impl WinbarClient {
                     }
                 }
             }
-        }));
-
-        Ok(())
+        }))
     }
 }

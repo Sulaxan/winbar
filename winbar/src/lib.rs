@@ -11,6 +11,8 @@ pub mod client;
 pub mod color;
 pub mod protocol;
 
+pub const DEFAULT_URL: &str = "localhost:10989";
+
 pub enum WinbarAction {
     UpdateWindow,
     Shutdown,
