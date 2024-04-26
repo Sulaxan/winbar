@@ -77,7 +77,7 @@ pub fn listen(hwnd: HWND, recv: Receiver<WinbarAction>) {
                     InvalidateRect(hwnd, None, true);
                 },
                 WinbarAction::Shutdown => {
-                    todo!()
+                    WindowsApi::send_window_shutdown_msg(hwnd);
                 }
             }
         }

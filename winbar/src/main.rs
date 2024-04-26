@@ -17,13 +17,10 @@ use tokio::runtime;
 use tracing::instrument;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
 use winbar::{color::Color, WinbarAction, WinbarContext, DEFAULT_URL};
+use windows::Win32::Foundation::BOOL;
 use windows::Win32::{
     Foundation::HWND,
     System::Console::{SetConsoleCtrlHandler, CTRL_C_EVENT},
-};
-use windows::Win32::{
-    Foundation::{BOOL, LPARAM, WPARAM},
-    UI::WindowsAndMessaging::{PostMessageW, WM_CLOSE},
 };
 use windows_api::WindowsApi;
 
@@ -162,7 +159,7 @@ fn main() -> anyhow::Result<()> {
     thread::spawn(move || {
         let rt = runtime::Runtime::new().unwrap();
 
-        // need to block on here, otherwise the thread shuts down prematurely
+        // need to block_on here, otherwise the thread shuts down prematurely
         rt.block_on(async move {
             match WinbarServer::new(DEFAULT_URL, winbar_ctx).await {
                 Ok(mut server) => {
@@ -190,19 +187,13 @@ fn main() -> anyhow::Result<()> {
 pub extern "system" fn ctrl_handler(ctrltype: u32) -> BOOL {
     match ctrltype {
         CTRL_C_EVENT => {
-            match WINBAR_HWND.lock().and_then(|hwnd| unsafe {
-                match PostMessageW(*hwnd, WM_CLOSE, WPARAM(0), LPARAM(0)) {
-                    Err(e) => {
-                        tracing::error!("Error posting WM_CLOSE message: {}", e);
-                    }
-                    _ => {}
+            match WINBAR_HWND.lock() {
+                Ok(hwnd) => {
+                    WindowsApi::send_window_shutdown_msg(*hwnd);
                 }
-                Ok(())
-            }) {
                 Err(e) => {
                     tracing::error!("Error obtaining winbar hwnd lock: {}", e);
                 }
-                _ => {}
             }
 
             true.into()

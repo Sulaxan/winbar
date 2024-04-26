@@ -5,7 +5,7 @@ use tracing::instrument;
 use windows::{
     core::HSTRING,
     Win32::{
-        Foundation::COLORREF,
+        Foundation::{COLORREF, HWND, LPARAM, WPARAM},
         Graphics::{
             Gdi::{
                 CreateFontW, CreatePen, CreateSolidBrush, SelectObject, SetBkColor, SetTextColor,
@@ -14,6 +14,7 @@ use windows::{
             },
             GdiPlus::{GdiplusShutdown, GdiplusStartup, GdiplusStartupInput, Status},
         },
+        UI::WindowsAndMessaging::{PostMessageW, WM_CLOSE},
     },
 };
 
@@ -69,6 +70,16 @@ impl WindowsApi {
             SelectObject(hdc, font);
 
             SetTextColor(hdc, COLORREF(default_fg_color));
+        }
+    }
+
+    #[instrument]
+    pub fn send_window_shutdown_msg(hwnd: HWND) {
+        match unsafe { PostMessageW(hwnd, WM_CLOSE, WPARAM(0), LPARAM(0)) } {
+            Err(e) => {
+                tracing::error!("Error posting WM_CLOSE message: {}", e);
+            }
+            _ => {}
         }
     }
 

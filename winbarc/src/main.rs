@@ -17,10 +17,10 @@ async fn main() {
 
     let handle = client.start(DEFAULT_URL, recv).await.unwrap();
 
-    println!("Sending update window payload");
+    println!("Sending shutdown payload");
     send.send(WinbarServerPayload {
         id: 100000,
-        message: ServerMessage::UpdateWindow,
+        message: ServerMessage::Shutdown,
     })
     .await
     .unwrap();
