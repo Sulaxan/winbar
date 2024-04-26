@@ -1,24 +1,46 @@
-use std::io;
+use std::{io, sync::mpsc::Sender};
 
-use tokio::{io::AsyncReadExt, net::TcpListener};
+use anyhow::{anyhow, Result};
+use getset::Getters;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
+    task::JoinHandle,
+};
+use winbar::{
+    protocol::{WinbarClientPayload, WinbarServerPayload},
+    WinbarAction, WinbarContext,
+};
+
+#[derive(Getters)]
+pub struct Connection {
+    #[getset(get = "pub")]
+    handle: JoinHandle<()>,
+}
 
 pub struct WinbarServer {
     listener: TcpListener,
+    connections: Vec<Connection>,
+    ctx: WinbarContext,
 }
 
 impl WinbarServer {
-    pub async fn new(addr: &str) -> io::Result<Self> {
+    pub async fn new(addr: &str, ctx: WinbarContext) -> io::Result<Self> {
         Ok(Self {
             listener: TcpListener::bind(addr.to_string()).await?,
+            connections: Vec::new(),
+            ctx,
         })
     }
 
-    pub async fn start(&self) -> io::Result<()> {
+    pub async fn start(&mut self) -> io::Result<()> {
         loop {
             let (mut stream, _) = self.listener.accept().await?;
+            let ctx = self.ctx.clone();
 
-            tokio::spawn(async move {
+            let handle = tokio::spawn(async move {
                 let mut buf = vec![0; 4096];
+
                 loop {
                     let n = stream
                         .read(&mut buf)
@@ -29,9 +51,83 @@ impl WinbarServer {
                         return;
                     }
 
-                    // TODO: write to stream...
+                    let payload = match serde_json::from_slice::<WinbarServerPayload>(&buf[0..n]) {
+                        Ok(payload) => payload,
+                        Err(e) => {
+                            tracing::error!("Error while parsing server payload: {}", e);
+                            return;
+                        }
+                    };
+                    match Self::process(&ctx, &payload, &stream) {
+                        Ok(_) => {
+                            let client_payload = WinbarClientPayload {
+                                id: payload.id,
+                                message: winbar::protocol::ClientMessage::Success,
+                            };
+                            match serde_json::to_vec(&client_payload) {
+                                Ok(serialized) => {
+                                    if let Err(e) = stream.write(&serialized).await {}
+                                }
+                                Err(e) => {
+                                    tracing::error!("Error while serializing payload: {}", e);
+                                }
+                            }
+                        }
+                        Err(e) => {}
+                    }
                 }
             });
+
+            self.connections.push(Connection { handle })
+        }
+    }
+
+    pub fn stop(&mut self) {
+        // dropping the handle should shut down the tcp stream
+        self.connections
+            .drain(0..)
+            .for_each(|conn| conn.handle.abort());
+    }
+
+    fn process(
+        ctx: &WinbarContext,
+        payload: &WinbarServerPayload,
+        stream: &TcpStream,
+    ) -> Result<()> {
+        match payload.message {
+            winbar::protocol::ServerMessage::UpdateWindow => {
+                if let Err(e) = ctx.sender().send(WinbarAction::UpdateWindow) {}
+            }
+            winbar::protocol::ServerMessage::Shutdown => {
+                ctx.sender().send(WinbarAction::Shutdown)?
+            }
+        }
+
+        let client_payload = WinbarClientPayload {
+            id: payload.id,
+            message: winbar::protocol::ClientMessage::Success,
+        };
+
+        Ok(())
+    }
+
+    fn send_error(stream: &TcpStream, id: u32, message: &str) {
+        let client_payload = WinbarClientPayload {
+            id,
+            message: winbar::protocol::ClientMessage::Error(message.to_string()),
+        };
+    }
+
+    async fn serialize_and_send(stream: &mut TcpStream, payload: &WinbarClientPayload) {
+        match serde_json::to_vec(payload) {
+            Ok(serialized) => {
+                if let Err(e) = stream.write(&serialized).await {
+                    tracing::error!("Error while sending payload: {}", e);
+                }
+            }
+            Err(e) => {
+                tracing::error!("Error while serializing payload: {}", e);
+            }
         }
     }
 }

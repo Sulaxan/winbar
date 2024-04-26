@@ -8,6 +8,7 @@ use windows::Win32::{
 };
 
 pub mod color;
+pub mod protocol;
 
 pub enum WinbarAction {
     UpdateWindow,
