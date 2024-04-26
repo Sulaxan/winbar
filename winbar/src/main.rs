@@ -6,11 +6,7 @@ use std::{
 use anyhow::{anyhow, Context};
 use clap::Parser;
 use cli::WinbarCli;
-use component_impl::{
-    datetime::DateTimeComponent,
-    manager::{ComponentLocation, ComponentManager},
-    static_text::StaticTextComponent,
-};
+use component_impl::manager::ComponentManager;
 use config::Config;
 use lazy_static::lazy_static;
 use tokio::runtime;
@@ -51,6 +47,7 @@ lazy_static! {
         g: 181,
         b: 80,
     }));
+    // Segoe UI Variable is the default windows font
     static ref DEFAULT_FONT: Arc<Mutex<String>> =
         Arc::new(Mutex::new("Segoe UI Variable".to_string()));
     static ref WINBAR_HWND: Arc<Mutex<HWND>> = Arc::new(Mutex::new(HWND(0)));
@@ -58,6 +55,7 @@ lazy_static! {
         Arc::new(Mutex::new(ComponentManager::new()));
 }
 
+#[instrument]
 pub fn read_config() -> anyhow::Result<()> {
     let cli = WinbarCli::parse();
     if cli.generate_config {
@@ -80,7 +78,21 @@ pub fn read_config() -> anyhow::Result<()> {
     }
 
     let config = Config::read(cli.config_path)?;
-    config.set_global_constants()
+    config.set_global_constants()?;
+
+    tracing::info!("Adding components from config");
+    match COMPONENT_MANAGER.lock() {
+        Ok(mut manager) => {
+            config.components.iter().for_each(|data| {
+                manager.add(data.location, data.component.to_component());
+            });
+        }
+        Err(e) => {
+            tracing::error!("Error obtaining component manager lock: {}", e)
+        }
+    }
+
+    Ok(())
 }
 
 fn main() -> anyhow::Result<()> {
@@ -99,31 +111,6 @@ fn main() -> anyhow::Result<()> {
     unsafe {
         SetConsoleCtrlHandler(Some(ctrl_handler), true)
             .with_context(|| "Could not set console ctrl handler")?;
-    }
-
-    tracing::info!("Adding components");
-    match COMPONENT_MANAGER.lock() {
-        Ok(mut manager) => {
-            manager.add(
-                ComponentLocation::LEFT,
-                Arc::new(StaticTextComponent::new("left".to_owned(), 10)),
-            );
-            manager.add(
-                ComponentLocation::MIDDLE,
-                Arc::new(StaticTextComponent::new("middle".to_owned(), 10)),
-            );
-            manager.add(
-                ComponentLocation::RIGHT,
-                Arc::new(StaticTextComponent::new("right".to_owned(), 10)),
-            );
-            manager.add(
-                ComponentLocation::RIGHT,
-                Arc::new(DateTimeComponent::new("%F %r".to_owned())),
-            );
-        }
-        Err(e) => {
-            tracing::error!("Error obtaining component manager lock: {}", e)
-        }
     }
 
     tracing::info!("Initializing window");

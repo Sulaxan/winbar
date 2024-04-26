@@ -143,7 +143,7 @@ pub enum ComponentData {
 }
 
 impl ComponentData {
-    pub fn to_component(&self) -> Arc<dyn Component> {
+    pub fn to_component(&self) -> Arc<dyn Component + Sync + Send> {
         match self {
             Self::StaticText { text, padding_x } => Arc::new(StaticTextComponent::new(
                 text.to_string(),
