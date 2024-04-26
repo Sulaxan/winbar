@@ -7,6 +7,7 @@ use windows::Win32::{
     Graphics::Gdi::HDC,
 };
 
+pub mod client;
 pub mod color;
 pub mod protocol;
 
