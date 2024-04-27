@@ -35,6 +35,7 @@ static HEIGHT: AtomicI32 = AtomicI32::new(25);
 static POSITION_X: AtomicI32 = AtomicI32::new(0);
 static POSITION_Y: AtomicI32 = AtomicI32::new(0);
 static COMPONENT_GAP: AtomicI32 = AtomicI32::new(10);
+static DEFAULT_FONT_SIZE: AtomicI32 = AtomicI32::new(18);
 
 lazy_static! {
     static ref DEFAULT_BG_COLOR: Arc<Mutex<Color>> = Arc::new(Mutex::new(Color::Rgb {
@@ -102,6 +103,7 @@ fn main() -> anyhow::Result<()> {
         // .with(EnvFilter::from_default_env())
         .init();
 
+    tracing::info!("Reading config");
     read_config()?;
 
     tracing::info!("Starting GDI+");

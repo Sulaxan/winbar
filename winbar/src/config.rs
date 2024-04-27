@@ -12,12 +12,16 @@ use crate::{
     component_impl::{
         datetime::DateTimeComponent, manager::ComponentLocation, static_text::StaticTextComponent,
     },
-    COMPONENT_GAP, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT, HEIGHT, POSITION_X,
-    POSITION_Y, WIDTH,
+    COMPONENT_GAP, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT, DEFAULT_FONT_SIZE, HEIGHT,
+    POSITION_X, POSITION_Y, WIDTH,
 };
 
 fn default_component_gap() -> i32 {
     10
+}
+
+fn default_font_size() -> i32 {
+    18
 }
 
 #[derive(Serialize, Deserialize)]
@@ -33,6 +37,8 @@ pub struct Config {
     pub default_bg_color: Color,
     pub default_fg_color: Color,
     pub default_font: String,
+    #[serde(default = "default_font_size")]
+    pub default_font_size: i32,
     pub components: Vec<ComponentConfig>,
 }
 
@@ -52,6 +58,7 @@ impl Config {
         POSITION_X.store(self.position_x, Ordering::SeqCst);
         POSITION_Y.store(self.position_y, Ordering::SeqCst);
         COMPONENT_GAP.store(self.component_gap, Ordering::SeqCst);
+        DEFAULT_FONT_SIZE.store(self.default_font_size, Ordering::SeqCst);
         {
             let mut bg_color = DEFAULT_BG_COLOR
                 .lock()
@@ -94,6 +101,7 @@ impl Default for Config {
                 b: 80,
             },
             default_font: "Segoe IO Variable".to_string(),
+            default_font_size: 18,
             components: vec![
                 ComponentConfig {
                     location: ComponentLocation::LEFT,

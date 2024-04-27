@@ -1,4 +1,4 @@
-use std::mem::MaybeUninit;
+use std::{mem::MaybeUninit, sync::atomic::Ordering};
 
 use anyhow::{bail, Result};
 use tracing::instrument;
@@ -18,7 +18,7 @@ use windows::{
     },
 };
 
-use crate::{DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT};
+use crate::{DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT, DEFAULT_FONT_SIZE};
 
 pub struct WindowsApi {}
 
@@ -40,6 +40,7 @@ impl WindowsApi {
             let font = DEFAULT_FONT.lock().unwrap();
             font.to_string()
         };
+        let default_font_size = DEFAULT_FONT_SIZE.load(Ordering::SeqCst);
 
         unsafe {
             let pen = CreatePen(PS_SOLID, 0, COLORREF(default_bg_color));
@@ -51,7 +52,7 @@ impl WindowsApi {
             // SetBkColor(hdc, COLORREF(TRANSPARENT_COLOR));
 
             let font = CreateFontW(
-                18,
+                default_font_size,
                 0,
                 0,
                 0,
