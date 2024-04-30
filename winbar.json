@@ -19,6 +19,7 @@
     }
   },
   "default_font": "Segoe IO Variable",
+  "default_font_size": 18,
   "components": [
     {
       "location": "LEFT",

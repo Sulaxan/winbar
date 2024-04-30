@@ -1,0 +1,9 @@
+
+Successfully generated the config!
+
+!!! IMPORTANT!!!
+=================
+A generic config was generated, meaning it's not optimal for your system! Make sure you open up the
+config and edit the values to better suit it for your system.
+
+Refer to the GitHub repo for configuration help: https://github.com/Sulaxan/winbar

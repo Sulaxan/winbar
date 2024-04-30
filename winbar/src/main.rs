@@ -61,20 +61,13 @@ pub fn read_config() -> anyhow::Result<()> {
     let cli = WinbarCli::parse();
     if cli.generate_config {
         if cli.config_path.try_exists().unwrap() {
-            println!("You can only generate a config if it doesn't exist already!");
-            println!("If you're absolutely sure you want to generate the config, either provide a different config path or delete/rename your current config.");
+            println!(include_str!("./res/config_exists_warning.txt"));
             std::process::exit(1);
         }
 
         let config = Config::default();
         config.write(cli.config_path).unwrap();
-        println!("\nSuccessfully generated config!");
-        println!("\nIMPORTANT!!!");
-        println!(
-            "The config generated is a generic config, meaning it's not optimal for your system!"
-        );
-        println!("Make sure you open up the config and edit values to better suit it for you.");
-        println!("Refer to the GitHub for configuration help: https://github.com/Sulaxan/winbar\n");
+        println!(include_str!("./res/config_gen_success.txt"));
         std::process::exit(0);
     }
 

@@ -1,0 +1,4 @@
+You can only generate a config if it doesn't exist already!
+
+If you're absolutely sure you want to generate the config, either provide a different config path or
+delete/rename your current config.
