@@ -11,7 +11,8 @@ pub mod client;
 pub mod color;
 pub mod protocol;
 
-pub const DEFAULT_URL: &str = "localhost:10989";
+pub const DEFAULT_PORT: i32 = 10989;
+pub const DEFAULT_HOSTNAME: &str = "localhost";
 
 pub enum WinbarAction {
     UpdateWindow,

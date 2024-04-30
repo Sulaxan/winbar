@@ -43,12 +43,12 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn read(path: PathBuf) -> Result<Self> {
+    pub fn read(path: &PathBuf) -> Result<Self> {
         serde_json::from_slice(&fs::read(path).with_context(|| "Could not read path")?)
             .with_context(|| "Could not parse config")
     }
 
-    pub fn write(&self, path: PathBuf) -> Result<()> {
+    pub fn write(&self, path: &PathBuf) -> Result<()> {
         fs::write(path, serde_json::to_vec_pretty(self)?).with_context(|| "Could not write config")
     }
 

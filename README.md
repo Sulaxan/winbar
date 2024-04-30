@@ -39,6 +39,7 @@ todo
 ## Roadmap
 
 - Multi-monitor support
+- Plugin system
 
 ## Credits
 

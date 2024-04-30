@@ -1,5 +1,9 @@
 use std::{
-    sync::{atomic::AtomicI32, mpsc, Arc, Mutex},
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicI32, Ordering},
+        mpsc, Arc, Mutex,
+    },
     thread,
 };
 
@@ -12,7 +16,7 @@ use lazy_static::lazy_static;
 use tokio::runtime;
 use tracing::instrument;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
-use winbar::{color::Color, WinbarAction, WinbarContext, DEFAULT_URL};
+use winbar::{color::Color, WinbarAction, WinbarContext, DEFAULT_HOSTNAME, DEFAULT_PORT};
 use windows::Win32::Foundation::BOOL;
 use windows::Win32::{
     Foundation::HWND,
@@ -29,6 +33,10 @@ pub mod container;
 pub mod server;
 pub mod windows_api;
 
+// runtime variables
+static SERVER_PORT: AtomicI32 = AtomicI32::new(DEFAULT_PORT);
+
+// config variables
 const TRANSPARENT_COLOR: u32 = 0;
 static WIDTH: AtomicI32 = AtomicI32::new(2560);
 static HEIGHT: AtomicI32 = AtomicI32::new(25);
@@ -56,23 +64,30 @@ lazy_static! {
         Arc::new(Mutex::new(ComponentManager::new()));
 }
 
+pub fn gen_config(path: &PathBuf) {
+    if path.try_exists().unwrap() {
+        println!(include_str!("./res/config_exists_warning.txt"));
+        std::process::exit(1);
+    }
+
+    let config = Config::default();
+    config.write(path).unwrap();
+    println!(include_str!("./res/config_gen_success.txt"));
+    std::process::exit(0);
+}
+
 #[instrument]
 pub fn read_config() -> anyhow::Result<()> {
     let cli = WinbarCli::parse();
     if cli.generate_config {
-        if cli.config_path.try_exists().unwrap() {
-            println!(include_str!("./res/config_exists_warning.txt"));
-            std::process::exit(1);
-        }
-
-        let config = Config::default();
-        config.write(cli.config_path).unwrap();
-        println!(include_str!("./res/config_gen_success.txt"));
-        std::process::exit(0);
+        gen_config(&cli.config_path);
+        return Ok(());
     }
 
-    let config = Config::read(cli.config_path)?;
+    let config = Config::read(&cli.config_path)?;
     config.set_global_constants()?;
+
+    SERVER_PORT.store(cli.port, Ordering::SeqCst);
 
     tracing::info!("Adding components from config");
     match COMPONENT_MANAGER.lock() {
@@ -143,7 +158,12 @@ fn main() -> anyhow::Result<()> {
 
         // need to block_on here, otherwise the thread shuts down prematurely
         rt.block_on(async move {
-            match WinbarServer::new(DEFAULT_URL, winbar_ctx).await {
+            let url = format!(
+                "{}:{}",
+                DEFAULT_HOSTNAME,
+                SERVER_PORT.load(Ordering::SeqCst)
+            );
+            match WinbarServer::new(&url, winbar_ctx).await {
                 Ok(mut server) => {
                     if let Err(e) = server.start_listening().await {
                         tracing::error!("Error while starting to listen for connections: {}", e);
