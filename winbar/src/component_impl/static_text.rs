@@ -7,7 +7,8 @@ use windows::Win32::{
     Graphics::{
         Gdi::{DrawTextW, GetTextExtentPoint32W, DT_CENTER, DT_SINGLELINE, DT_VCENTER, HDC},
         GdiPlus::{
-            GdipCreateFromHDC, GdipCreatePen1, GdipFillRectangle, GdipGetPenBrushFill, UnitPixel,
+            GdipCreateFromHDC, GdipCreatePen1, GdipDeleteBrush, GdipDeleteGraphics, GdipDeletePen,
+            GdipFillRectangle, GdipGetPenBrushFill, UnitPixel,
         },
     },
 };
@@ -77,6 +78,10 @@ impl Component for StaticTextComponent {
                 &mut rect,
                 DT_SINGLELINE | DT_VCENTER | DT_CENTER,
             );
+
+            GdipDeleteBrush(brush);
+            GdipDeletePen(pen);
+            GdipDeleteGraphics(g);
         }
     }
 
