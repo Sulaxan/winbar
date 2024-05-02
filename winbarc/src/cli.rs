@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use winbar::DEFAULT_PORT;
+use winbar::{DEFAULT_HOSTNAME, DEFAULT_PORT};
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
@@ -10,7 +10,9 @@ pub struct WinbarClientCli {
     /// Whether to suppress logging
     #[arg(short, long, action)]
     pub quiet: bool,
-
+    /// The URL of the winbar TCP server.
+    #[arg(long, default_value_t = format!("{}:{}", DEFAULT_HOSTNAME, DEFAULT_PORT))]
+    pub url: String,
     /// Command to run
     #[command(subcommand)]
     pub command: WinbarSubcommand,

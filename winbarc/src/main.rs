@@ -1,4 +1,5 @@
 use std::{
+    process::Command,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -12,7 +13,6 @@ use tokio::sync::mpsc;
 use winbar::{
     client::WinbarClient,
     protocol::{ClientMessage, ServerMessage, WinbarClientPayload, WinbarServerPayload},
-    DEFAULT_URL,
 };
 
 use crate::cli::WinbarClientCli;
@@ -52,8 +52,31 @@ async fn main() {
     // it's ok to send to the mpsc channel before the winbar tcp server connection is established
     // since what we send is buffered
     match cli.command {
-        WinbarSubcommand::Start => {
-            eprintln!("Not yet implemented");
+        WinbarSubcommand::Start { config_path, port } => {
+            let path = if let Some(path) = config_path.to_str() {
+                path
+            } else {
+                log!("Invalid config path");
+                return;
+            };
+
+            match Command::new("winbar.exe")
+                .args(["--config-path", path])
+                .args(["--port", &port.to_string()])
+                .arg("&")
+                .output()
+            {
+                Ok(_) => {
+                    log!("Started winbar!");
+                }
+                Err(e) => {
+                    log!("Could not start winbar: {}", e);
+                    log!("Common solutions:");
+                    log!("- Ensure winbar.exe is in your path");
+                }
+            }
+
+            return;
         }
         WinbarSubcommand::Stop => {
             log!("Sending shutdown payload...");
@@ -80,7 +103,7 @@ async fn main() {
             log!("Received no response within 5 seconds, shutting down...");
             std::process::exit(0);
         }
-        res = client.start(DEFAULT_URL, recv) => {
+        res = client.start(&cli.url, recv) => {
             match res {
                 Ok(_) => {},
                 Err(e) => {
