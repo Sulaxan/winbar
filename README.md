@@ -15,9 +15,9 @@ displayed.
 `winbar` is divided into two components: the CLI (`winbarc`) and the actual status bar app itself
 (`winbar`). The CLI can be used to control `winbar`.
 
-`winbar` (the app) runs a TCP server for clients to connect to (in this case, just `winbarc`). The
-protocol is a simple JSON based request-response protocol. If you're curious/want to make your own
-client, see [protocol.rs](./winbar/src/protocol.rs).
+`winbar` (the app) runs a TCP server for clients to connect to (in this case, just `winbarc`). It
+uses a simple JSON-based request-response protocol. If you're curious/want to make your own client,
+see [protocol.rs](./winbar/src/protocol.rs).
 
 ## Components
 

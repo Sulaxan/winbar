@@ -1,5 +1,5 @@
 use std::{
-    process::Command,
+    process::{Command, Stdio},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -63,8 +63,9 @@ async fn main() {
             match Command::new("winbar.exe")
                 .args(["--config-path", path])
                 .args(["--port", &port.to_string()])
-                .arg("&")
-                .output()
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
             {
                 Ok(_) => {
                     log!("Started winbar!");
