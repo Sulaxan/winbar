@@ -1,0 +1,9 @@
+[workspace]
+members = ["winbar", "winbarc"]
+resolver = "2"
+
+[workspace.package]
+authors = ["Sulaxan"]
+repository = "https://github.com/sulaxan/winbar"
+license = "MIT"
+edition = "2021"

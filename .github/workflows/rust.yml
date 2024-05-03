@@ -1,10 +1,11 @@
-name: Rust
+# based on: https://github.com/LGUG2Z/komorebi/blob/master/.github/workflows/windows.yaml
+name: Windows
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 env:
   CARGO_TERM_COLOR: always
@@ -12,9 +13,71 @@ env:
 jobs:
   build:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        target:
+          - x86_64-pc-windows-msvc
+
     steps:
-    - uses: actions/checkout@v4
-    - name: Build winbar
-      run: cd winbar && cargo build --verbose
-    - name: Build winbarc
-      run: cd winbarc && cargo build --verbose
+      - uses: actions/checkout@v4
+
+      - name: Cache Cargo data
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Get rustc commit hash
+        id: cargo-target-cache
+        run: |
+          echo "::set-output name=rust_hash::$(rustc -Vv | grep commit-hash | awk '{print $2}')"
+
+      - name: Cache Cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ github.base_ref }}-${{ github.head_ref }}-${{ matrix.target }}-cargo-target-dir-${{ steps.cargo-target-cache.outputs.rust_hash }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ github.base_ref }}-${{ matrix.target }}-cargo-target-dir-${{ steps.cargo-target-cache.outputs.rust_hash }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install Rustup using win.rustup.rs
+        run: |
+          # Disable the download progress bar which can cause perf issues
+          $ProgressPreference = "SilentlyContinue"
+          Invoke-WebRequest https://win.rustup.rs/ -OutFile rustup-init.exe
+          .\rustup-init.exe -y --default-host=x86_64-pc-windows-msvc --profile=minimal
+        shell: powershell
+
+      - name: Ensure stable toolchain is up to date
+        run: rustup update stable
+        shell: bash
+
+      - name: Install the target
+        run: |
+          rustup target install ${{ matrix.target }}
+
+      - name: Run Cargo checks
+        run: |
+          cargo fmt --check
+          cargo check
+          cargo clippy
+
+      - name: Run a full build
+        run: |
+          cargo build --locked --release --target ${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --locked --release --target ${{ matrix.target }}
+
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: winbar-${{ matrix.target }}
+          path: |
+            target/${{ matrix.target }}/release/winbar.exe
+            target/${{ matrix.target }}/release/winbar.pdb
+            target/${{ matrix.target }}/release/winbarc.exe
+            target/${{ matrix.target }}/release/winbarc.pdb
+          retention-days: 7
