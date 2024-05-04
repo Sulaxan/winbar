@@ -38,8 +38,54 @@ The following components are available natively by `winbar`:
 
 See [Configuration](./docs/configuration.md).
 
+## Downloading / Installing
+
+`winbar` and `winbarc` can be downloaded from
+[Releases](https://github.com/Sulaxan/winbar/releases). There currently isn't a convenient
+installation process, so for now, winbar and winbarc can be put in any location as long as it's in
+your PATH.
+
+If you wish to download the latest `main` branch build, you can download the artifacts from the
+latest GitHub Action run.
+
+## Usage
+
+Once you have downloaded `winbar` and `winbarc` and it exists in your PATH, you will need to create
+or generate the config. There is an [example config](./winbar.json) you can download, or run the
+following command:
+
+```
+winbar --config-path <PATH> --generate-config
+```
+
+This will generate an example config in the given path.
+
+To start `winbar`, you can either run `winbar` directly:
+
+```
+winbar --config-path <PATH>
+```
+
+or, use `winbarc` to start `winbar` and run it in the background:
+
+```
+winbarc start --config-path <PATH>
+```
+
+To stop winbar, run:
+
+```
+winbarc stop
+```
+
+That's the gist of it! There are more commands and options available that you can specify. Feel
+free to use the `--help` option on any command (`winbar`, `winbarc`) or subcommand to see everything
+available to you.
+
 ## Roadmap
 
+- More configuration options for existing components
+- New components
 - Multi-monitor support
 - Plugin system
 
