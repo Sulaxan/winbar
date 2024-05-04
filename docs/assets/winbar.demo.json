@@ -1,0 +1,65 @@
+{
+  "window_width": 2560,
+  "window_height": 40,
+  "position_x": 0,
+  "position_y": 0,
+  "component_gap": 10,
+  "default_bg_color": {
+    "Rgb": {
+      "r": 23,
+      "g": 23,
+      "b": 23
+    }
+  },
+  "default_fg_color": {
+    "Rgb": {
+      "r": 255,
+      "g": 255,
+      "b": 255
+    }
+  },
+  "default_font": "Segoe IO Variable",
+  "default_font_size": 24,
+  "components": [
+    {
+      "location": "LEFT",
+      "component": {
+        "StaticText": {
+          "text": "Helloooooooo",
+          "padding_x": 10
+        }
+      }
+    },
+    {
+      "location": "MIDDLE",
+      "component": {
+        "StaticText": {
+          "text": "Winbar   |    Demo",
+          "padding_x": 10
+        }
+      }
+    },
+    {
+      "location": "RIGHT",
+      "component": {
+        "DateTime": {
+          "format": "%F %r",
+          "bg_color": {
+            "Rgb": {
+              "r": 23,
+              "g": 23,
+              "b": 23
+            }
+          },
+          "fg_color": {
+            "Rgb": {
+              "r": 33,
+              "g": 181,
+              "b": 80
+            }
+          }
+        }
+      }
+    }
+  ]
+}

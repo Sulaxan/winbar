@@ -2,6 +2,8 @@
 
 A Windows 10/11 Status Bar.
 
+[<img src="docs/assets/winbar_demo_small.png">]()
+
 `winbar` is quite different from other status bars in that it provides more straightforward
 configuration. What this means is that you spend less time configuring the status bar, and have
 something that just _works_ and generally looks good.
