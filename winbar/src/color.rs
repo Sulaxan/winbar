@@ -12,8 +12,8 @@ impl Color {
     /// green, and red.
     pub fn bgr(&self) -> u32 {
         match self {
-            Self::Rgb { r, g, b } => 0x00 | b << 16 | g << 8 | r,
-            Self::Argb { r, g, b, alpha: _ } => 0x00 | b << 16 | g << 8 | r,
+            Self::Rgb { r, g, b } => b << 16 | g << 8 | r,
+            Self::Argb { r, g, b, alpha: _ } => b << 16 | g << 8 | r,
             Self::Hex(_hex) => unimplemented!("not yet implemented"),
         }
     }
@@ -23,8 +23,8 @@ impl Color {
     pub fn argb(&self) -> u32 {
         match self {
             // 0xFF alpha = opaque
-            Self::Rgb { r, g, b } => 0x00 | 0xFF << 24 | r << 16 | g << 8 | b,
-            Self::Argb { r, g, b, alpha } => 0x00 | alpha << 24 | r << 16 | g << 8 | b,
+            Self::Rgb { r, g, b } => 0xFF << 24 | r << 16 | g << 8 | b,
+            Self::Argb { r, g, b, alpha } => alpha << 24 | r << 16 | g << 8 | b,
             Self::Hex(_hex) => unimplemented!("not yet implemented"),
         }
     }

@@ -35,7 +35,7 @@ pub fn create_window() -> HWND {
         let wc = WNDCLASSW {
             lpfnWndProc: Some(window_proc),
             hInstance: h_inst.into(),
-            lpszClassName: class_name.clone(),
+            lpszClassName: class_name,
             hbrBackground: CreateSolidBrush(COLORREF(TRANSPARENT_COLOR)),
             ..Default::default()
         };
@@ -44,7 +44,7 @@ pub fn create_window() -> HWND {
 
         let hwnd = CreateWindowExW(
             WS_EX_TOOLWINDOW | WS_EX_LAYERED,
-            class_name.clone(),
+            class_name,
             w!("winbar"),
             WS_POPUP | WS_VISIBLE,
             0,
@@ -84,8 +84,8 @@ pub fn listen(hwnd: HWND, recv: Receiver<WinbarAction>) {
 
         unsafe {
             if PeekMessageW(&mut msg, hwnd, 0, 0, PM_REMOVE).as_bool() {
-                TranslateMessage(&mut msg);
-                DispatchMessageW(&mut msg);
+                TranslateMessage(&msg);
+                DispatchMessageW(&msg);
             }
         }
 
@@ -126,7 +126,7 @@ pub extern "system" fn window_proc(
                     }
                 }
 
-                EndPaint(hwnd, &mut ps);
+                EndPaint(hwnd, &ps);
                 tracing::trace!("Finished painting");
             }
             // WM_ERASEBKGND => {

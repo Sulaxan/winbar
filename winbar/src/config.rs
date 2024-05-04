@@ -155,7 +155,7 @@ impl ComponentData {
         match self {
             Self::StaticText { text, padding_x } => Arc::new(StaticTextComponent::new(
                 text.to_string(),
-                padding_x.clone(),
+                *padding_x,
             )),
             Self::DateTime {
                 format,

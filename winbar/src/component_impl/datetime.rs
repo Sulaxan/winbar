@@ -62,11 +62,8 @@ impl Component for DateTimeComponent {
         loop {
             // first tick completes immediately
             interval.tick().await;
-            match ctx.sender().send(WinbarAction::UpdateWindow) {
-                Err(e) => {
-                    tracing::error!("Could not send update window action over channel: {}", e);
-                }
-                _ => {}
+            if let Err(e) = ctx.sender().send(WinbarAction::UpdateWindow) {
+                tracing::error!("Could not send update window action over channel: {}", e);
             }
         }
     }

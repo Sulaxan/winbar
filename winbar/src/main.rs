@@ -141,7 +141,7 @@ fn main() -> anyhow::Result<()> {
         let rt = runtime::Runtime::new().unwrap();
         match COMPONENT_MANAGER.lock() {
             Ok(mut manager) => {
-                let set = manager.start(cloned_ctx, winbar_hwnd.clone());
+                let set = manager.start(cloned_ctx, winbar_hwnd);
                 drop(manager);
 
                 rt.block_on(set);

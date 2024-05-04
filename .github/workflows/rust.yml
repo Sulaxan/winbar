@@ -64,12 +64,9 @@ jobs:
           cargo check
           cargo clippy
 
-      - name: Run a full build
+      - name: Run full build
         run: |
           cargo build --locked --release --target ${{ matrix.target }}
-
-      - name: Build
-        run: cargo build --locked --release --target ${{ matrix.target }}
 
       - name: Upload built artifacts
         uses: actions/upload-artifact@v4

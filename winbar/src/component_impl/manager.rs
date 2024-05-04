@@ -28,6 +28,12 @@ pub struct ComponentManager {
     components: Vec<ComponentState>,
 }
 
+impl Default for ComponentManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ComponentManager {
     pub fn new() -> Self {
         Self {

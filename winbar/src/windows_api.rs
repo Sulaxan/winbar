@@ -76,11 +76,8 @@ impl WindowsApi {
 
     #[instrument]
     pub fn send_window_shutdown_msg(hwnd: HWND) {
-        match unsafe { PostMessageW(hwnd, WM_CLOSE, WPARAM(0), LPARAM(0)) } {
-            Err(e) => {
-                tracing::error!("Error posting WM_CLOSE message: {}", e);
-            }
-            _ => {}
+        if let Err(e) = unsafe { PostMessageW(hwnd, WM_CLOSE, WPARAM(0), LPARAM(0)) } {
+            tracing::error!("Error posting WM_CLOSE message: {}", e);
         }
     }
 
