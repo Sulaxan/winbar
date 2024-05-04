@@ -5,11 +5,11 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "**.rs"
+      - "winbar*/**"
   pull_request:
     branches: ["main"]
     paths:
-      - "**.rs"
+      - "winbar*/**"
 
 env:
   CARGO_TERM_COLOR: always
