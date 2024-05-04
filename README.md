@@ -1,8 +1,12 @@
 # winbar
 
+![Windows](https://img.shields.io/badge/Windows-0078D6?style=flat-square&logo=windows&logoColor=white)
+![Build](https://img.shields.io/github/actions/workflow/status/Sulaxan/winbar/rust.yml?style=flat-square)
+![Version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2FSulaxan%2Fwinbar%2Fmain%2Fwinbar%2FCargo.toml&query=%24.package.version&style=flat-square&label=version&color=green)
+
 A Windows 10/11 Status Bar.
 
-[<img src="docs/assets/winbar_demo_small.png">]()
+[<img src="docs/assets/winbar_demo_small.png">](./docs/assets/winbar_demo_small.png)
 
 `winbar` is quite different from other status bars in that it provides more straightforward
 configuration. What this means is that you spend less time configuring the status bar, and have
