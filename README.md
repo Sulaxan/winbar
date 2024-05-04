@@ -34,7 +34,7 @@ The following components are available natively by `winbar`:
 
 ## Configuration
 
-todo
+See [Configuration](./docs/configuration.md).
 
 ## Roadmap
 

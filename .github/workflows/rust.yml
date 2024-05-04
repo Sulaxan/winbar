@@ -4,8 +4,12 @@ name: Windows
 on:
   push:
     branches: ["main"]
+    paths:
+      - "**.rs"
   pull_request:
     branches: ["main"]
+    paths:
+      - "**.rs"
 
 env:
   CARGO_TERM_COLOR: always
