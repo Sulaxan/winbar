@@ -105,7 +105,9 @@ cargo install --path <./winbar | ./winbarc>
 ### A note on developing
 
 For an unknown reason, `winbarc` does not properly start `winbar` if `winbarc` is run using `cargo
-run`. If you wish to use `winbarc` to start `winbar`, make sure to install it using `cargo install`.
+run` (in the default debug mode). If you wish to use `winbarc` to start `winbar`, make sure to
+either run it in release mode (`cargo run --release`) or install it using `cargo install` (also in
+release mode, but that is the default).
 
 ## Roadmap
 
