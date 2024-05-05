@@ -86,6 +86,27 @@ That's the gist of it! There are more commands and options available that you ca
 free to use the `--help` option on any command (`winbar`, `winbarc`) or subcommand to see everything
 available to you.
 
+## Compiling from source
+
+Clone this repo and change into the project's directory. You can then compile using the following
+command:
+
+```
+cargo build [--release]
+```
+
+If you want to install `winbar` and `winbarc`, run the following commands with the respective
+project:
+
+```
+cargo install --path <./winbar | ./winbarc>
+```
+
+### A note on developing
+
+For an unknown reason, `winbarc` does not properly start `winbar` if `winbarc` is run using `cargo
+run`. If you wish to use `winbarc` to start `winbar`, make sure to install it using `cargo install`.
+
 ## Roadmap
 
 - More configuration options for existing components

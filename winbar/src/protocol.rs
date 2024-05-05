@@ -18,8 +18,10 @@ use serde::{Deserialize, Serialize};
 /// A message sent to the server by the client.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ServerMessage {
-    UpdateWindow,
     Shutdown,
+    UpdateWindow,
+    ShowWindow,
+    HideWindow,
 }
 
 /// A server-bound payload.

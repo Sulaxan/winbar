@@ -31,4 +31,8 @@ pub enum WinbarSubcommand {
     Stop,
     /// Sends a message to update the status bar window
     UpdateWindow,
+    /// Sends a message to show the status bar
+    Show,
+    /// Sends a message to hide the status bar
+    Hide,
 }

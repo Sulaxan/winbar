@@ -6,7 +6,7 @@ use tokio::{
     task::JoinHandle,
 };
 use winbar::{
-    protocol::{WinbarClientPayload, WinbarServerPayload},
+    protocol::{ServerMessage, WinbarClientPayload, WinbarServerPayload},
     WinbarAction, WinbarContext,
 };
 
@@ -93,11 +93,17 @@ impl WinbarServer {
         _stream: &TcpStream,
     ) -> Result<()> {
         match payload.message {
-            winbar::protocol::ServerMessage::UpdateWindow => {
+            ServerMessage::Shutdown => {
+                ctx.sender().send(WinbarAction::Shutdown)?;
+            }
+            ServerMessage::UpdateWindow => {
                 ctx.sender().send(WinbarAction::UpdateWindow)?;
             }
-            winbar::protocol::ServerMessage::Shutdown => {
-                ctx.sender().send(WinbarAction::Shutdown)?;
+            ServerMessage::ShowWindow => {
+                ctx.sender().send(WinbarAction::ShowWindow)?;
+            }
+            ServerMessage::HideWindow => {
+                ctx.sender().send(WinbarAction::HideWindow)?;
             }
         }
 

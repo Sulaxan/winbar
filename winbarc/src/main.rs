@@ -1,5 +1,4 @@
 use std::{
-    process::{Command, Stdio},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -60,13 +59,13 @@ async fn main() {
                 return;
             };
 
-            match Command::new("winbar.exe")
-                .args(["--config-path", path])
-                .args(["--port", &port.to_string()])
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()
-            {
+            let arguments = format!("--config-path {} --port {}", path, &port.to_string());
+            let script = format!(
+                "Start-Process winbar -ArgumentList '{}' -WindowStyle hidden",
+                arguments
+            );
+
+            match powershell_script::run(&script) {
                 Ok(_) => {
                     log!("Started winbar!");
                 }
@@ -82,7 +81,7 @@ async fn main() {
         WinbarSubcommand::Stop => {
             log!("Sending shutdown payload...");
             send.send(WinbarServerPayload {
-                id: 100000,
+                id: 0,
                 message: ServerMessage::Shutdown,
             })
             .await
@@ -91,8 +90,26 @@ async fn main() {
         WinbarSubcommand::UpdateWindow => {
             log!("Sending update window payload...");
             send.send(WinbarServerPayload {
-                id: 100000,
+                id: 0,
                 message: ServerMessage::UpdateWindow,
+            })
+            .await
+            .unwrap();
+        }
+        WinbarSubcommand::Show => {
+            log!("Sending show window payload...");
+            send.send(WinbarServerPayload {
+                id: 0,
+                message: ServerMessage::ShowWindow,
+            })
+            .await
+            .unwrap();
+        }
+        WinbarSubcommand::Hide => {
+            log!("Sending hide window payload...");
+            send.send(WinbarServerPayload {
+                id: 0,
+                message: ServerMessage::HideWindow,
             })
             .await
             .unwrap();
