@@ -14,7 +14,7 @@ use windows::{
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, DispatchMessageW, PeekMessageW, PostQuitMessage,
             RegisterClassW, SetLayeredWindowAttributes, ShowWindow, TranslateMessage, LWA_COLORKEY,
-            MSG, PM_REMOVE, SW_SHOWDEFAULT, WM_CLOSE, WM_DESTROY, WM_PAINT, WNDCLASSW,
+            MSG, PM_REMOVE, SW_SHOWNORMAL, WM_CLOSE, WM_DESTROY, WM_PAINT, WNDCLASSW,
             WS_EX_LAYERED, WS_EX_TOOLWINDOW, WS_POPUP, WS_VISIBLE,
         },
     },
@@ -59,7 +59,7 @@ pub fn create_window() -> HWND {
 
         SetLayeredWindowAttributes(hwnd, COLORREF(TRANSPARENT_COLOR), 25, LWA_COLORKEY).ok();
 
-        let _success = ShowWindow(hwnd, SW_SHOWDEFAULT);
+        let _success = ShowWindow(hwnd, SW_SHOWNORMAL);
 
         hwnd
     }
@@ -72,12 +72,18 @@ pub fn listen(hwnd: HWND, recv: Receiver<WinbarAction>) {
     loop {
         if let Ok(action) = recv.try_recv() {
             match action {
+                WinbarAction::Shutdown => {
+                    WindowsApi::send_window_shutdown_msg(hwnd);
+                }
                 WinbarAction::UpdateWindow => unsafe {
                     // UpdateWindow(hwnd);
                     InvalidateRect(hwnd, None, true);
                 },
-                WinbarAction::Shutdown => {
-                    WindowsApi::send_window_shutdown_msg(hwnd);
+                WinbarAction::ShowWindow => {
+                    WindowsApi::show_window(hwnd);
+                }
+                WinbarAction::HideWindow => {
+                    WindowsApi::hide_window(hwnd);
                 }
             }
         }

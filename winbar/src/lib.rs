@@ -15,8 +15,10 @@ pub const DEFAULT_PORT: i32 = 10989;
 pub const DEFAULT_HOSTNAME: &str = "localhost";
 
 pub enum WinbarAction {
-    UpdateWindow,
     Shutdown,
+    UpdateWindow,
+    ShowWindow,
+    HideWindow,
 }
 
 #[derive(Getters, Clone)]

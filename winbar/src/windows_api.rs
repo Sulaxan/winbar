@@ -14,7 +14,7 @@ use windows::{
             },
             GdiPlus::{GdiplusShutdown, GdiplusStartup, GdiplusStartupInput, Status},
         },
-        UI::WindowsAndMessaging::{PostMessageW, WM_CLOSE},
+        UI::WindowsAndMessaging::{PostMessageW, ShowWindow, SW_HIDE, SW_SHOW, WM_CLOSE},
     },
 };
 
@@ -71,6 +71,18 @@ impl WindowsApi {
             SelectObject(hdc, font);
 
             SetTextColor(hdc, COLORREF(default_fg_color));
+        }
+    }
+
+    pub fn show_window(hwnd: HWND) {
+        unsafe {
+            let _ = ShowWindow(hwnd, SW_SHOW);
+        }
+    }
+
+    pub fn hide_window(hwnd: HWND) {
+        unsafe {
+            let _ = ShowWindow(hwnd, SW_HIDE);
         }
     }
 
