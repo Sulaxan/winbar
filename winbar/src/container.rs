@@ -6,7 +6,10 @@ use windows::{
     core::w,
     Win32::{
         Foundation::{COLORREF, HWND, LPARAM, LRESULT, WPARAM},
-        Graphics::Gdi::{BeginPaint, CreateSolidBrush, EndPaint, InvalidateRect, PAINTSTRUCT},
+        Graphics::Gdi::{
+            BeginPaint, CreateSolidBrush, DeleteObject, EndPaint, InvalidateRect, SelectObject,
+            SetBkColor, SetTextColor, PAINTSTRUCT, PS_SOLID,
+        },
         System::{
             LibraryLoader::GetModuleHandleW,
             Threading::{GetStartupInfoW, STARTUPINFOW},
@@ -20,7 +23,10 @@ use windows::{
     },
 };
 
-use crate::{windows_api::WindowsApi, COMPONENT_MANAGER, HEIGHT, TRANSPARENT_COLOR, WIDTH};
+use crate::{
+    styles::Styles, windows_api::WindowsApi, COMPONENT_MANAGER, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR,
+    DEFAULT_FONT, DEFAULT_FONT_SIZE, HEIGHT, TRANSPARENT_COLOR, WIDTH,
+};
 
 pub fn create_window() -> HWND {
     unsafe {
@@ -117,7 +123,29 @@ pub extern "system" fn window_proc(
                 let mut ps = PAINTSTRUCT::default();
                 let hdc = BeginPaint(hwnd, &mut ps);
 
-                WindowsApi::set_default_styles(hdc);
+                let default_bg_color = {
+                    let color = DEFAULT_BG_COLOR.lock().unwrap();
+                    color.bgr()
+                };
+                let default_fg_color = {
+                    let color = DEFAULT_FG_COLOR.lock().unwrap();
+                    color.bgr()
+                };
+                let default_font = {
+                    let font = DEFAULT_FONT.lock().unwrap();
+                    font.to_string()
+                };
+                let default_font_size = DEFAULT_FONT_SIZE.load(Ordering::SeqCst);
+
+                let pen = Styles::pen(default_bg_color, PS_SOLID);
+                let brush = Styles::solid_brush(default_bg_color);
+                let font = Styles::font(default_font_size, &default_font);
+
+                SelectObject(hdc, pen);
+                SelectObject(hdc, brush);
+                SelectObject(hdc, font);
+                SetBkColor(hdc, COLORREF(default_bg_color));
+                SetTextColor(hdc, COLORREF(default_fg_color));
 
                 match COMPONENT_MANAGER.lock() {
                     Ok(mut manager) => {
@@ -131,6 +159,10 @@ pub extern "system" fn window_proc(
                         tracing::error!("Error obtaining component manager lock: {}", e);
                     }
                 }
+
+                DeleteObject(pen);
+                DeleteObject(brush);
+                DeleteObject(font);
 
                 EndPaint(hwnd, &ps);
                 tracing::trace!("Finished painting");
