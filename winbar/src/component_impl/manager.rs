@@ -91,7 +91,7 @@ impl ComponentManager {
                 state.location = Rect {
                     x: curr_loc_x,
                     y: 0,
-                    width: curr_loc_x + component_width,
+                    width: component_width,
                     height: height,
                 };
                 curr_loc_x += component_width + gap;
@@ -107,7 +107,7 @@ impl ComponentManager {
                 state.location = Rect {
                     x: curr_loc_x - component_width,
                     y: 0,
-                    width: curr_loc_x,
+                    width: component_width,
                     height: height,
                 };
                 curr_loc_x -= component_width + gap;
@@ -144,7 +144,7 @@ impl ComponentManager {
                 state.location = Rect {
                     x: curr_loc_x,
                     y: 0,
-                    width: curr_loc_x + component_width,
+                    width: component_width,
                     height: height,
                 };
                 curr_loc_x += component_width + gap;

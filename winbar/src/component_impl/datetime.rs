@@ -52,11 +52,17 @@ impl Component for DateTimeComponent {
         let time = Local::now();
         let formatted = time.format(&self.format).to_string();
 
-        let font = {
-            let font = DEFAULT_FONT.lock().unwrap();
-            font.to_string()
+        let font = match &self.styles.font {
+            Some(font) => font.to_string(),
+            None => {
+                let font = DEFAULT_FONT.lock().unwrap();
+                font.to_string()
+            }
         };
-        let font_size = DEFAULT_FONT_SIZE.load(Ordering::SeqCst);
+        let font_size = match &self.styles.font_size {
+            Some(size) => *size,
+            None => DEFAULT_FONT_SIZE.load(Ordering::SeqCst),
+        };
         let bg_color = match &self.styles.bg_color {
             Some(color) => color.bgr(),
             None => {
@@ -91,7 +97,6 @@ impl Component for DateTimeComponent {
                 &mut rect.into(),
                 DT_SINGLELINE | DT_VCENTER | DT_CENTER,
             );
-            println!("Drawn");
 
             DeleteObject(pen);
             DeleteObject(brush);
