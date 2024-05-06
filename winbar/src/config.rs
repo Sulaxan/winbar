@@ -108,7 +108,10 @@ impl Default for Config {
                     location: ComponentLocation::LEFT,
                     component: ComponentData::StaticText {
                         text: "Winbar!".to_string(),
-                        padding_x: 10,
+                        styles: StyleOptions {
+                            padding_x: 10,
+                            ..Default::default()
+                        },
                     },
                 },
                 ComponentConfig {
@@ -136,7 +139,7 @@ pub struct ComponentConfig {
 pub enum ComponentData {
     StaticText {
         text: String,
-        padding_x: i32,
+        styles: StyleOptions,
     },
     DateTime {
         format: String,
@@ -147,8 +150,8 @@ pub enum ComponentData {
 impl ComponentData {
     pub fn to_component(&self) -> Arc<dyn Component + Sync + Send> {
         match self {
-            Self::StaticText { text, padding_x } => {
-                Arc::new(StaticTextComponent::new(text.to_string(), *padding_x))
+            Self::StaticText { text, styles } => {
+                Arc::new(StaticTextComponent::new(text.to_string(), styles.clone()))
             }
             Self::DateTime { format, styles } => {
                 Arc::new(DateTimeComponent::new(format.to_string(), styles.clone()))
