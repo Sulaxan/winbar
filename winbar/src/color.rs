@@ -1,10 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone)]
+pub const TRANSPARENT_COLOR: u32 = 0;
+
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 pub enum Color {
     Rgb { r: u32, g: u32, b: u32 },
     Argb { r: u32, g: u32, b: u32, alpha: u32 },
     Hex(String),
+    Transparent,
 }
 
 impl Color {
@@ -15,6 +18,7 @@ impl Color {
             Self::Rgb { r, g, b } => b << 16 | g << 8 | r,
             Self::Argb { r, g, b, alpha: _ } => b << 16 | g << 8 | r,
             Self::Hex(_hex) => unimplemented!("not yet implemented"),
+            Self::Transparent => TRANSPARENT_COLOR,
         }
     }
 
@@ -26,6 +30,7 @@ impl Color {
             Self::Rgb { r, g, b } => 0xFF << 24 | r << 16 | g << 8 | b,
             Self::Argb { r, g, b, alpha } => alpha << 24 | r << 16 | g << 8 | b,
             Self::Hex(_hex) => unimplemented!("not yet implemented"),
+            Self::Transparent => TRANSPARENT_COLOR,
         }
     }
 }

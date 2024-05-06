@@ -14,7 +14,7 @@ use crate::{
     },
     styles::StyleOptions,
     COMPONENT_GAP, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT, DEFAULT_FONT_SIZE, HEIGHT,
-    POSITION_X, POSITION_Y, WIDTH,
+    POSITION_X, POSITION_Y, STATUS_BAR_BG_COLOR, WIDTH,
 };
 
 fn default_component_gap() -> i32 {
@@ -27,19 +27,31 @@ fn default_font_size() -> i32 {
 
 #[derive(Serialize, Deserialize)]
 pub struct Config {
+    /// The width of the window
     pub window_width: i32,
+    /// The height of the window
     pub window_height: i32,
+    /// The x position of the window
     #[serde(default)]
     pub position_x: i32,
+    /// The y position of the window
     #[serde(default)]
     pub position_y: i32,
+    /// The gap, in pixels, between components
     #[serde(default = "default_component_gap")]
     pub component_gap: i32,
+    /// The background color of the status bar
+    pub status_bar_bg_color: Color,
+    /// The default background color of components
     pub default_bg_color: Color,
+    /// The default foreground color of components
     pub default_fg_color: Color,
+    /// The default font of components
     pub default_font: String,
+    /// The default font size of components
     #[serde(default = "default_font_size")]
     pub default_font_size: i32,
+    /// All components that should be displayed in the status bar
     pub components: Vec<ComponentConfig>,
 }
 
@@ -60,6 +72,12 @@ impl Config {
         POSITION_Y.store(self.position_y, Ordering::SeqCst);
         COMPONENT_GAP.store(self.component_gap, Ordering::SeqCst);
         DEFAULT_FONT_SIZE.store(self.default_font_size, Ordering::SeqCst);
+        {
+            let mut status_bar_bg_color = STATUS_BAR_BG_COLOR
+                .lock()
+                .map_err(|e| anyhow!("Could not obtain status bar background color lock: {}", e))?;
+            *status_bar_bg_color = self.status_bar_bg_color.clone();
+        }
         {
             let mut bg_color = DEFAULT_BG_COLOR
                 .lock()
@@ -91,6 +109,7 @@ impl Default for Config {
             position_x: 0,
             position_y: 0,
             component_gap: 10,
+            status_bar_bg_color: Color::Transparent,
             default_bg_color: Color::Rgb {
                 r: 23,
                 g: 23,

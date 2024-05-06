@@ -1,7 +1,7 @@
 use std::sync::{atomic::Ordering, mpsc::Receiver};
 
 use tracing::instrument;
-use winbar::WinbarAction;
+use winbar::{color::Color, WinbarAction};
 use windows::{
     core::w,
     Win32::{
@@ -25,10 +25,10 @@ use windows::{
 
 use crate::{
     styles::Styles, windows_api::WindowsApi, COMPONENT_MANAGER, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR,
-    DEFAULT_FONT, DEFAULT_FONT_SIZE, HEIGHT, TRANSPARENT_COLOR, WIDTH,
+    DEFAULT_FONT, DEFAULT_FONT_SIZE, HEIGHT, WIDTH,
 };
 
-pub fn create_window() -> HWND {
+pub fn create_window(bg_color: Color) -> HWND {
     unsafe {
         let class_name = w!("winbar");
         let h_inst = GetModuleHandleW(None).unwrap();
@@ -42,7 +42,7 @@ pub fn create_window() -> HWND {
             lpfnWndProc: Some(window_proc),
             hInstance: h_inst.into(),
             lpszClassName: class_name,
-            hbrBackground: CreateSolidBrush(COLORREF(TRANSPARENT_COLOR)),
+            hbrBackground: CreateSolidBrush(COLORREF(bg_color.bgr())),
             ..Default::default()
         };
 
@@ -63,7 +63,7 @@ pub fn create_window() -> HWND {
             None,
         );
 
-        SetLayeredWindowAttributes(hwnd, COLORREF(TRANSPARENT_COLOR), 25, LWA_COLORKEY).ok();
+        SetLayeredWindowAttributes(hwnd, COLORREF(Color::Transparent.bgr()), 25, LWA_COLORKEY).ok();
 
         let _success = ShowWindow(hwnd, SW_SHOWNORMAL);
 

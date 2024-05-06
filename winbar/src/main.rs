@@ -38,7 +38,6 @@ pub mod windows_api;
 static SERVER_PORT: AtomicI32 = AtomicI32::new(DEFAULT_PORT);
 
 // config variables
-const TRANSPARENT_COLOR: u32 = 0;
 static WIDTH: AtomicI32 = AtomicI32::new(2560);
 static HEIGHT: AtomicI32 = AtomicI32::new(25);
 static POSITION_X: AtomicI32 = AtomicI32::new(0);
@@ -47,6 +46,7 @@ static COMPONENT_GAP: AtomicI32 = AtomicI32::new(10);
 static DEFAULT_FONT_SIZE: AtomicI32 = AtomicI32::new(18);
 
 lazy_static! {
+    static ref STATUS_BAR_BG_COLOR: Arc<Mutex<Color>> = Arc::new(Mutex::new(Color::Transparent));
     static ref DEFAULT_BG_COLOR: Arc<Mutex<Color>> = Arc::new(Mutex::new(Color::Rgb {
         r: 23,
         g: 23,
@@ -125,7 +125,15 @@ fn main() -> anyhow::Result<()> {
     }
 
     tracing::info!("Initializing window");
-    let winbar_hwnd = container::create_window();
+    let status_bar_bg_color = {
+        let color = STATUS_BAR_BG_COLOR
+            .lock()
+            .map_err(|e| anyhow!("Could not obtain status bar bg color lock: {}", e))?;
+
+        color.clone()
+    };
+    let winbar_hwnd = container::create_window(status_bar_bg_color);
+
     {
         let mut hwnd = WINBAR_HWND
             .lock()
