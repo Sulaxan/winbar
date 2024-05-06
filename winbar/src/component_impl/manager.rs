@@ -92,7 +92,7 @@ impl ComponentManager {
                     x: curr_loc_x,
                     y: 0,
                     width: component_width,
-                    height: height,
+                    height,
                 };
                 curr_loc_x += component_width + gap;
             });
@@ -108,7 +108,7 @@ impl ComponentManager {
                     x: curr_loc_x - component_width,
                     y: 0,
                     width: component_width,
-                    height: height,
+                    height,
                 };
                 curr_loc_x -= component_width + gap;
             });
@@ -145,7 +145,7 @@ impl ComponentManager {
                     x: curr_loc_x,
                     y: 0,
                     width: component_width,
-                    height: height,
+                    height,
                 };
                 curr_loc_x += component_width + gap;
             });
