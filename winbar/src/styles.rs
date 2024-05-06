@@ -13,14 +13,26 @@ use windows::{
 pub struct Styles {}
 
 impl Styles {
+    /// Creates a new pen.
+    ///
+    /// Note that it is the caller's responsibility to call SelectObject to use the object, and
+    /// DeleteObject to cleanup the resource.
     pub fn pen(color: u32, style: PEN_STYLE) -> HPEN {
         unsafe { CreatePen(style, 0, COLORREF(color)) }
     }
 
+    /// Creates a new solid brush.
+    ///
+    /// Note that it is the caller's responsibility to call SelectObject to use the object, and
+    /// DeleteObject to cleanup the resource.
     pub fn solid_brush(color: u32) -> HBRUSH {
         unsafe { CreateSolidBrush(COLORREF(color)) }
     }
 
+    /// Creates a new font.
+    ///
+    /// Note that it is the caller's responsibility to call SelectObject to use the object, and
+    /// DeleteObject to cleanup the resource.
     pub fn font(size: i32, name: &str) -> HFONT {
         unsafe {
             CreateFontW(

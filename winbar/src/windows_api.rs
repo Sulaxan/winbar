@@ -1,77 +1,18 @@
-use std::{mem::MaybeUninit, sync::atomic::Ordering};
+use std::mem::MaybeUninit;
 
 use anyhow::{bail, Result};
 use tracing::instrument;
-use windows::{
-    core::HSTRING,
-    Win32::{
-        Foundation::{COLORREF, HWND, LPARAM, WPARAM},
-        Graphics::{
-            Gdi::{
-                CreateFontW, CreatePen, CreateSolidBrush, SelectObject, SetBkColor, SetTextColor,
-                ANSI_CHARSET, CLIP_DEFAULT_PRECIS, DEFAULT_PITCH, FF_DONTCARE, FW_DONTCARE, HDC,
-                OUT_TT_PRECIS, PROOF_QUALITY, PS_SOLID,
-            },
-            GdiPlus::{GdiplusShutdown, GdiplusStartup, GdiplusStartupInput, Status},
-        },
-        UI::WindowsAndMessaging::{PostMessageW, ShowWindow, SW_HIDE, SW_SHOW, WM_CLOSE},
-    },
+use windows::Win32::{
+    Foundation::{HWND, LPARAM, WPARAM},
+    Graphics::GdiPlus::{GdiplusShutdown, GdiplusStartup, GdiplusStartupInput, Status},
+    UI::WindowsAndMessaging::{PostMessageW, ShowWindow, SW_HIDE, SW_SHOW, WM_CLOSE},
 };
-
-use crate::{DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT, DEFAULT_FONT_SIZE};
 
 pub struct WindowsApi {}
 
 impl WindowsApi {
     pub fn str_to_u16_slice(s: &str) -> Vec<u16> {
         s.encode_utf16().collect::<Vec<u16>>()
-    }
-
-    pub fn set_default_styles(hdc: HDC) {
-        let default_bg_color = {
-            let color = DEFAULT_BG_COLOR.lock().unwrap();
-            color.bgr()
-        };
-        let default_fg_color = {
-            let color = DEFAULT_FG_COLOR.lock().unwrap();
-            color.bgr()
-        };
-        let default_font = {
-            let font = DEFAULT_FONT.lock().unwrap();
-            font.to_string()
-        };
-        let default_font_size = DEFAULT_FONT_SIZE.load(Ordering::SeqCst);
-
-        unsafe {
-            let pen = CreatePen(PS_SOLID, 0, COLORREF(default_bg_color));
-            let brush = CreateSolidBrush(COLORREF(default_bg_color));
-
-            SelectObject(hdc, pen);
-            SelectObject(hdc, brush);
-            SetBkColor(hdc, COLORREF(default_bg_color));
-            // SetBkColor(hdc, COLORREF(TRANSPARENT_COLOR));
-
-            let font = CreateFontW(
-                default_font_size,
-                0,
-                0,
-                0,
-                FW_DONTCARE.0 as i32,
-                0,
-                0,
-                0,
-                ANSI_CHARSET.0.into(),
-                OUT_TT_PRECIS.0.into(),
-                CLIP_DEFAULT_PRECIS.0.into(),
-                PROOF_QUALITY.0.into(),
-                DEFAULT_PITCH.0 as u32 | FF_DONTCARE.0 as u32,
-                &HSTRING::from(default_font),
-            );
-
-            SelectObject(hdc, font);
-
-            SetTextColor(hdc, COLORREF(default_fg_color));
-        }
     }
 
     pub fn show_window(hwnd: HWND) {
