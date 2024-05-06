@@ -31,6 +31,7 @@ pub mod component_impl;
 pub mod config;
 pub mod container;
 pub mod server;
+pub mod styles;
 pub mod windows_api;
 
 // runtime variables
