@@ -12,6 +12,7 @@ use crate::{
     component_impl::{
         datetime::DateTimeComponent, manager::ComponentLocation, static_text::StaticTextComponent,
     },
+    styles::StyleOptions,
     COMPONENT_GAP, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT, DEFAULT_FONT_SIZE, HEIGHT,
     POSITION_X, POSITION_Y, WIDTH,
 };
@@ -114,15 +115,9 @@ impl Default for Config {
                     location: ComponentLocation::LEFT,
                     component: ComponentData::DateTime {
                         format: "%F %r".to_string(),
-                        bg_color: Color::Rgb {
-                            r: 23,
-                            g: 23,
-                            b: 23,
-                        },
-                        fg_color: Color::Rgb {
-                            r: 33,
-                            g: 181,
-                            b: 80,
+                        styles: StyleOptions {
+                            padding_x: 10,
+                            ..Default::default()
                         },
                     },
                 },
@@ -145,8 +140,7 @@ pub enum ComponentData {
     },
     DateTime {
         format: String,
-        bg_color: Color,
-        fg_color: Color,
+        styles: StyleOptions,
     },
 }
 
@@ -156,11 +150,9 @@ impl ComponentData {
             Self::StaticText { text, padding_x } => {
                 Arc::new(StaticTextComponent::new(text.to_string(), *padding_x))
             }
-            Self::DateTime {
-                format,
-                fg_color: _,
-                bg_color: _,
-            } => Arc::new(DateTimeComponent::new(format.to_string())),
+            Self::DateTime { format, styles } => {
+                Arc::new(DateTimeComponent::new(format.to_string(), styles.clone()))
+            }
         }
     }
 }

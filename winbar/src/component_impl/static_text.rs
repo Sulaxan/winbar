@@ -1,14 +1,14 @@
 use std::mem::MaybeUninit;
 
 use async_trait::async_trait;
-use winbar::{Component, WinbarContext};
+use winbar::{util::rect::Rect, Component, WinbarContext};
 use windows::Win32::{
-    Foundation::{HWND, RECT, SIZE},
+    Foundation::{HWND, SIZE},
     Graphics::{
         Gdi::{DrawTextW, GetTextExtentPoint32W, DT_CENTER, DT_SINGLELINE, DT_VCENTER, HDC},
         GdiPlus::{
             GdipCreateFromHDC, GdipCreatePen1, GdipDeleteBrush, GdipDeleteGraphics, GdipDeletePen,
-            GdipFillRectangle, GdipGetPenBrushFill, UnitPixel,
+            GdipFillRectangleI, GdipGetPenBrushFill, UnitPixel,
         },
     },
 };
@@ -38,7 +38,7 @@ impl Component for StaticTextComponent {
         }
     }
 
-    fn draw(&self, _hwnd: HWND, mut rect: RECT, hdc: HDC) {
+    fn draw(&self, _hwnd: HWND, rect: Rect, hdc: HDC) {
         let default_bg_color = {
             let color = DEFAULT_BG_COLOR.lock().unwrap();
             color.argb()
@@ -61,21 +61,14 @@ impl Component for StaticTextComponent {
 
             let brush = bg_brush.assume_init();
 
-            GdipFillRectangle(
-                g,
-                brush,
-                rect.left as f32,
-                rect.top as f32,
-                (rect.right - rect.left) as f32,
-                (rect.bottom - rect.top) as f32,
-            );
+            GdipFillRectangleI(g, brush, rect.x, rect.y, rect.x2(), rect.y2());
 
             // RoundRect(hdc, rect.left, rect.top, rect.right, rect.bottom, 10, 10);
 
             DrawTextW(
                 hdc,
                 &mut WindowsApi::str_to_u16_slice(&self.text),
-                &mut rect,
+                &mut rect.into(),
                 DT_SINGLELINE | DT_VCENTER | DT_CENTER,
             );
 
@@ -85,5 +78,5 @@ impl Component for StaticTextComponent {
         }
     }
 
-    async fn start(&self, _ctx: WinbarContext, _hwnd: HWND, _rect: RECT) {}
+    async fn start(&self, _ctx: WinbarContext, _hwnd: HWND, _rect: Rect) {}
 }

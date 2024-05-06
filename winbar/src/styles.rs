@@ -1,14 +1,37 @@
+use serde::{Deserialize, Serialize};
+use winbar::{color::Color, util::rect::Rect};
 use windows::{
     core::HSTRING,
     Win32::{
         Foundation::COLORREF,
         Graphics::Gdi::{
-            CreateFontW, CreatePen, CreateSolidBrush, ANSI_CHARSET, CLIP_DEFAULT_PRECIS,
-            DEFAULT_PITCH, FF_DONTCARE, FW_DONTCARE, HBRUSH, HFONT, HPEN, OUT_TT_PRECIS, PEN_STYLE,
-            PROOF_QUALITY,
+            CreateFontW, CreatePen, CreateSolidBrush, RoundRect, ANSI_CHARSET, CLIP_DEFAULT_PRECIS,
+            DEFAULT_PITCH, FF_DONTCARE, FW_DONTCARE, HBRUSH, HDC, HFONT, HPEN, OUT_TT_PRECIS,
+            PEN_STYLE, PROOF_QUALITY,
         },
     },
 };
+
+#[derive(Clone, Default, Serialize, Deserialize)]
+pub enum BorderStyle {
+    #[default]
+    Square,
+    Rounded {
+        radius: i32,
+    },
+}
+
+#[derive(Clone, Default, Serialize, Deserialize)]
+pub struct StyleOptions {
+    pub bg_color: Option<Color>,
+    pub fg_color: Option<Color>,
+    #[serde(default)]
+    pub border_style: BorderStyle,
+    pub font: Option<String>,
+    pub font_size: Option<i32>,
+    #[serde(default)]
+    pub padding_x: i32,
+}
 
 pub struct Styles {}
 
@@ -51,6 +74,19 @@ impl Styles {
                 DEFAULT_PITCH.0 as u32 | FF_DONTCARE.0 as u32,
                 &HSTRING::from(name),
             )
+        }
+    }
+
+    pub fn draw_rect(hdc: HDC, rect: &Rect, border: &BorderStyle) {
+        unsafe {
+            match border {
+                BorderStyle::Square => {
+                    RoundRect(hdc, rect.x, rect.y, rect.x2(), rect.y2(), 0, 0);
+                }
+                BorderStyle::Rounded { radius } => {
+                    RoundRect(hdc, rect.x, rect.y, rect.x2(), rect.y2(), *radius, *radius);
+                }
+            }
         }
     }
 }
