@@ -1,5 +1,6 @@
 use std::sync::{atomic::Ordering, Arc};
 
+use getset::Getters;
 use serde::{Deserialize, Serialize};
 use tokio::task::LocalSet;
 use tracing::instrument;
@@ -15,9 +16,13 @@ pub enum ComponentLocation {
     RIGHT,
 }
 
+#[derive(Getters)]
 pub struct ComponentState {
+    #[getset(get = "pub")]
     location_intention: ComponentLocation,
+    #[getset(get = "pub")]
     location: Rect,
+    #[getset(get = "pub")]
     component: Arc<dyn Component + Send + Sync>,
 }
 
@@ -44,6 +49,13 @@ impl ComponentManager {
         self.components
             .iter()
             .for_each(|state| state.component.draw(hwnd, state.location, hdc))
+    }
+
+    pub fn for_each<F>(&self, f: F)
+    where
+        F: Fn(&ComponentState),
+    {
+        self.components.iter().for_each(|state| f(state));
     }
 
     pub fn start(&mut self, ctx: WinbarContext, hwnd: HWND) -> LocalSet {

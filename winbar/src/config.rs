@@ -6,13 +6,12 @@ use std::{
 
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
-use winbar::{color::Color, Component};
+use winbar::{color::Color, styles::StyleOptions, Component};
 
 use crate::{
     component_impl::{
         datetime::DateTimeComponent, manager::ComponentLocation, static_text::StaticTextComponent,
     },
-    styles::StyleOptions,
     COMPONENT_GAP, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT, DEFAULT_FONT_SIZE, HEIGHT,
     POSITION_X, POSITION_Y, STATUS_BAR_BG_COLOR, WIDTH,
 };

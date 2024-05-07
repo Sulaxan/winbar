@@ -1,36 +1,40 @@
-use std::{sync::atomic::Ordering, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use chrono::Local;
 use tokio::time::{self};
-use winbar::{util::rect::Rect, Component, WinbarAction, WinbarContext};
+use winbar::{
+    styles::{StyleOptions, Styles},
+    util::rect::Rect,
+    Component, WinbarAction, WinbarContext,
+};
 use windows::Win32::{
-    Foundation::{COLORREF, HWND, SIZE},
-    Graphics::Gdi::{
-        DeleteObject, DrawTextW, GetTextExtentPoint32W, SelectObject, SetBkColor, SetTextColor,
-        DT_CENTER, DT_SINGLELINE, DT_VCENTER, HDC, PS_SOLID,
-    },
+    Foundation::{HWND, SIZE},
+    Graphics::Gdi::{DrawTextW, GetTextExtentPoint32W, DT_CENTER, DT_SINGLELINE, DT_VCENTER, HDC},
 };
 
-use crate::{
-    styles::{StyleOptions, Styles},
-    windows_api::WindowsApi,
-    DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT, DEFAULT_FONT_SIZE,
-};
+use crate::windows_api::WindowsApi;
 
 pub struct DateTimeComponent {
     pub format: String,
-    pub styles: StyleOptions,
+    pub styles: Arc<StyleOptions>,
 }
 
 impl DateTimeComponent {
     pub fn new(format: String, styles: StyleOptions) -> Self {
-        Self { format, styles }
+        Self {
+            format,
+            styles: Arc::new(styles),
+        }
     }
 }
 
 #[async_trait]
 impl Component for DateTimeComponent {
+    fn styles(&self) -> Arc<StyleOptions> {
+        return self.styles.clone();
+    }
+
     fn width(&self, _hwnd: HWND, hdc: HDC) -> i32 {
         let time = Local::now();
         let formatted_time = time.format(&self.format).to_string();
@@ -52,55 +56,14 @@ impl Component for DateTimeComponent {
         let time = Local::now();
         let formatted = time.format(&self.format).to_string();
 
-        let font = match &self.styles.font {
-            Some(font) => font.to_string(),
-            None => {
-                let font = DEFAULT_FONT.lock().unwrap();
-                font.to_string()
-            }
-        };
-        let font_size = match &self.styles.font_size {
-            Some(size) => *size,
-            None => DEFAULT_FONT_SIZE.load(Ordering::SeqCst),
-        };
-        let bg_color = match &self.styles.bg_color {
-            Some(color) => color.bgr(),
-            None => {
-                let color = DEFAULT_BG_COLOR.lock().unwrap();
-                color.bgr()
-            }
-        };
-        let fg_color = match &self.styles.fg_color {
-            Some(color) => color.bgr(),
-            None => {
-                let color = DEFAULT_FG_COLOR.lock().unwrap();
-                color.bgr()
-            }
-        };
-
+        Styles::draw_rect(hdc, &rect, &self.styles.border_style);
         unsafe {
-            let pen = Styles::pen(bg_color, PS_SOLID);
-            let brush = Styles::solid_brush(bg_color);
-            let font = Styles::font(font_size, &font);
-
-            SelectObject(hdc, pen);
-            SelectObject(hdc, brush);
-            SelectObject(hdc, font);
-            SetBkColor(hdc, COLORREF(bg_color));
-            SetTextColor(hdc, COLORREF(fg_color));
-
-            Styles::draw_rect(hdc, &rect, &self.styles.border_style);
-
             DrawTextW(
                 hdc,
                 &mut WindowsApi::str_to_u16_slice(&formatted),
                 &mut rect.into(),
                 DT_SINGLELINE | DT_VCENTER | DT_CENTER,
             );
-
-            DeleteObject(pen);
-            DeleteObject(brush);
-            DeleteObject(font);
         }
     }
 

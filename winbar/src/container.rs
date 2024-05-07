@@ -1,14 +1,14 @@
 use std::sync::{atomic::Ordering, mpsc::Receiver};
 
 use tracing::instrument;
-use winbar::{color::Color, WinbarAction};
+use winbar::{color::Color, styles::Styles, WinbarAction};
 use windows::{
     core::w,
     Win32::{
         Foundation::{COLORREF, HWND, LPARAM, LRESULT, WPARAM},
         Graphics::Gdi::{
             BeginPaint, CreateSolidBrush, DeleteObject, EndPaint, InvalidateRect, SelectObject,
-            SetBkColor, SetTextColor, PAINTSTRUCT, PS_SOLID,
+            SetBkColor, SetTextColor, HDC, PAINTSTRUCT, PS_SOLID,
         },
         System::{
             LibraryLoader::GetModuleHandleW,
@@ -24,8 +24,8 @@ use windows::{
 };
 
 use crate::{
-    styles::Styles, windows_api::WindowsApi, COMPONENT_MANAGER, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR,
-    DEFAULT_FONT, DEFAULT_FONT_SIZE, HEIGHT, WIDTH,
+    windows_api::WindowsApi, COMPONENT_MANAGER, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT,
+    DEFAULT_FONT_SIZE, HEIGHT, WIDTH,
 };
 
 pub fn create_window(bg_color: Color) -> HWND {
@@ -109,6 +109,71 @@ pub fn listen(hwnd: HWND, recv: Receiver<WinbarAction>) {
     tracing::info!("Winbar shutting down...");
 }
 
+#[instrument(level = "trace")]
+pub fn paint(hwnd: HWND, hdc: HDC) {
+    let mut manager = match COMPONENT_MANAGER.lock() {
+        Ok(manager) => manager,
+        Err(e) => {
+            tracing::error!("Error obtaining component manager lock: {}", e);
+            return;
+        }
+    };
+
+    // FIXME: not ideal computing locations every time... optimize in the future
+    manager.compute_locations(hwnd, hdc);
+
+    manager.for_each(|state| {
+        let styles = state.component().styles();
+
+        // set styles
+        let font = match &styles.font {
+            Some(font) => font.to_string(),
+            None => {
+                let font = DEFAULT_FONT.lock().unwrap();
+                font.to_string()
+            }
+        };
+        let font_size = match &styles.font_size {
+            Some(size) => *size,
+            None => DEFAULT_FONT_SIZE.load(Ordering::SeqCst),
+        };
+        let bg_color = match &styles.bg_color {
+            Some(color) => color.bgr(),
+            None => {
+                let color = DEFAULT_BG_COLOR.lock().unwrap();
+                color.bgr()
+            }
+        };
+        let fg_color = match &styles.fg_color {
+            Some(color) => color.bgr(),
+            None => {
+                let color = DEFAULT_FG_COLOR.lock().unwrap();
+                color.bgr()
+            }
+        };
+
+        let pen = Styles::pen(bg_color, PS_SOLID);
+        let brush = Styles::solid_brush(bg_color);
+        let font = Styles::font(font_size, &font);
+
+        unsafe {
+            SelectObject(hdc, pen);
+            SelectObject(hdc, brush);
+            SelectObject(hdc, font);
+            SetBkColor(hdc, COLORREF(bg_color));
+            SetTextColor(hdc, COLORREF(fg_color));
+        }
+
+        state.component().draw(hwnd, state.location().clone(), hdc);
+
+        unsafe {
+            DeleteObject(pen);
+            DeleteObject(brush);
+            DeleteObject(font);
+        }
+    });
+}
+
 #[instrument(level = "trace", name = "window_process_function")]
 pub extern "system" fn window_proc(
     hwnd: HWND,
@@ -123,46 +188,7 @@ pub extern "system" fn window_proc(
                 let mut ps = PAINTSTRUCT::default();
                 let hdc = BeginPaint(hwnd, &mut ps);
 
-                let default_bg_color = {
-                    let color = DEFAULT_BG_COLOR.lock().unwrap();
-                    color.bgr()
-                };
-                let default_fg_color = {
-                    let color = DEFAULT_FG_COLOR.lock().unwrap();
-                    color.bgr()
-                };
-                let default_font = {
-                    let font = DEFAULT_FONT.lock().unwrap();
-                    font.to_string()
-                };
-                let default_font_size = DEFAULT_FONT_SIZE.load(Ordering::SeqCst);
-
-                let pen = Styles::pen(default_bg_color, PS_SOLID);
-                let brush = Styles::solid_brush(default_bg_color);
-                let font = Styles::font(default_font_size, &default_font);
-
-                SelectObject(hdc, pen);
-                SelectObject(hdc, brush);
-                SelectObject(hdc, font);
-                SetBkColor(hdc, COLORREF(default_bg_color));
-                SetTextColor(hdc, COLORREF(default_fg_color));
-
-                match COMPONENT_MANAGER.lock() {
-                    Ok(mut manager) => {
-                        // FIXME: not ideal to compute locations every time... need to change in the
-                        // future
-                        manager.compute_locations(hwnd, hdc);
-
-                        manager.draw_all(hwnd, hdc);
-                    }
-                    Err(e) => {
-                        tracing::error!("Error obtaining component manager lock: {}", e);
-                    }
-                }
-
-                DeleteObject(pen);
-                DeleteObject(brush);
-                DeleteObject(font);
+                paint(hwnd, hdc);
 
                 EndPaint(hwnd, &ps);
                 tracing::trace!("Finished painting");

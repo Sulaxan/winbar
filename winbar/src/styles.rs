@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use winbar::{color::Color, util::rect::Rect};
 use windows::{
     core::HSTRING,
     Win32::{
@@ -11,6 +10,8 @@ use windows::{
         },
     },
 };
+
+use crate::{color::Color, util::rect::Rect};
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub enum BorderStyle {
