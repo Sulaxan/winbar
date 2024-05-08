@@ -42,9 +42,9 @@ pub struct Config {
     /// The background color of the status bar
     pub status_bar_bg_color: Color,
     /// The default background color of components
-    pub default_bg_color: Color,
+    pub default_component_bg_color: Color,
     /// The default foreground color of components
-    pub default_fg_color: Color,
+    pub default_component_fg_color: Color,
     /// The default font of components
     pub default_font: String,
     /// The default font size of components
@@ -81,13 +81,13 @@ impl Config {
             let mut bg_color = DEFAULT_BG_COLOR
                 .lock()
                 .map_err(|e| anyhow!("Could not obtain default background color lock: {}", e))?;
-            *bg_color = self.default_bg_color.clone();
+            *bg_color = self.default_component_bg_color.clone();
         }
         {
             let mut fg_color = DEFAULT_FG_COLOR
                 .lock()
                 .map_err(|e| anyhow!("Could not obtain default foreground color lock: {}", e))?;
-            *fg_color = self.default_fg_color.clone();
+            *fg_color = self.default_component_fg_color.clone();
         }
         {
             let mut font = DEFAULT_FONT
@@ -109,12 +109,12 @@ impl Default for Config {
             position_y: 0,
             component_gap: 10,
             status_bar_bg_color: Color::Transparent,
-            default_bg_color: Color::Rgb {
+            default_component_bg_color: Color::Rgb {
                 r: 23,
                 g: 23,
                 b: 23,
             },
-            default_fg_color: Color::Rgb {
+            default_component_fg_color: Color::Rgb {
                 r: 33,
                 g: 181,
                 b: 80,

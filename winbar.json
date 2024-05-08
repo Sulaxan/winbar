@@ -4,14 +4,15 @@
   "position_x": 0,
   "position_y": 0,
   "component_gap": 10,
-  "default_bg_color": {
+  "status_bar_bg_color": "Transparent",
+  "default_component_bg_color": {
     "Rgb": {
       "r": 23,
       "g": 23,
       "b": 23
     }
   },
-  "default_fg_color": {
+  "default_component_fg_color": {
     "Rgb": {
       "r": 33,
       "g": 181,
@@ -26,7 +27,14 @@
       "component": {
         "StaticText": {
           "text": "Winbar!",
-          "padding_x": 10
+          "styles": {
+            "bg_color": null,
+            "fg_color": null,
+            "border_style": "Square",
+            "font": null,
+            "font_size": null,
+            "padding_x": 10
+          }
         }
       }
     },
@@ -35,19 +43,13 @@
       "component": {
         "DateTime": {
           "format": "%F %r",
-          "bg_color": {
-            "Rgb": {
-              "r": 23,
-              "g": 23,
-              "b": 23
-            }
-          },
-          "fg_color": {
-            "Rgb": {
-              "r": 33,
-              "g": 181,
-              "b": 80
-            }
+          "styles": {
+            "bg_color": null,
+            "fg_color": null,
+            "border_style": "Square",
+            "font": null,
+            "font_size": null,
+            "padding_x": 10
           }
         }
       }
