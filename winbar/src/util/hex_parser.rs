@@ -1,15 +1,19 @@
-use anyhow::{bail, Result};
+use anyhow::{bail, Result}; use getset::Getters;
 use regex::Regex;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Getters)]
 pub struct HexColor {
     /// The red component of the color.
+    #[getset(get = "pub")]
     r: u32,
     /// The green component of the color.
+    #[getset(get = "pub")]
     g: u32,
     /// The blue component of the color.
+    #[getset(get = "pub")]
     b: u32,
     /// The alpha component of the color.
+    #[getset(get = "pub")]
     alpha: Option<u32>,
 }
 
@@ -40,7 +44,7 @@ pub fn parse_color(hex: &str) -> Result<HexColor> {
 }
 
 /// Parses a hex digit, returning it's decimal form. Valid hex digits are in the following form:
-/// /([0-9A-F])+/.
+/// /([0-9A-Fa-f])+/.
 ///
 /// Note that this function currently does not support negative digits.
 pub fn parse_hex(hex: &str) -> Result<u32> {

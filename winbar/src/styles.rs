@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 use windows::{
     core::HSTRING,
     Win32::{
@@ -13,7 +12,7 @@ use windows::{
 
 use crate::{color::Color, util::rect::Rect};
 
-#[derive(Clone, Default, Serialize, Deserialize)]
+#[derive(Clone, Default)]
 pub enum BorderStyle {
     #[default]
     Square,
@@ -22,15 +21,13 @@ pub enum BorderStyle {
     },
 }
 
-#[derive(Clone, Default, Serialize, Deserialize)]
+#[derive(Clone, Default)]
 pub struct StyleOptions {
     pub bg_color: Option<Color>,
     pub fg_color: Option<Color>,
-    #[serde(default)]
     pub border_style: BorderStyle,
     pub font: Option<String>,
     pub font_size: Option<i32>,
-    #[serde(default)]
     pub padding_x: i32,
 }
 
