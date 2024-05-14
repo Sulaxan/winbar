@@ -55,7 +55,7 @@ impl ComponentManager {
     where
         F: Fn(&ComponentState),
     {
-        self.components.iter().for_each(|state| f(state));
+        self.components.iter().for_each(f);
     }
 
     pub fn start(&mut self, ctx: WinbarContext, hwnd: HWND) -> LocalSet {

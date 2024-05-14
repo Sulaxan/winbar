@@ -1,4 +1,5 @@
-use anyhow::{bail, Result}; use getset::Getters;
+use anyhow::{bail, Result};
+use getset::Getters;
 use regex::Regex;
 
 #[derive(Clone, Debug, PartialEq, Getters)]
@@ -20,7 +21,7 @@ pub struct HexColor {
 /// Parses a hex string
 pub fn parse_color(hex: &str) -> Result<HexColor> {
     let re = Regex::new(
-        "^#?(?<r>[0-9A-F]{2})(?<g>[0-9A-F]{2})(?<b>[0-9A-F]{2})(?<alpha>[0-9A-F]{2})?$",
+        "^#?(?<r>[0-9A-Fa-f]{2})(?<g>[0-9A-Fa-f]{2})(?<b>[0-9A-Fa-f]{2})(?<alpha>[0-9A-Fa-f]{2})?$",
     )?;
     match re.captures(hex) {
         Some(captures) => {

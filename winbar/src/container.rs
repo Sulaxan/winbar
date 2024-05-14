@@ -164,7 +164,7 @@ pub fn paint(hwnd: HWND, hdc: HDC) {
             SetTextColor(hdc, COLORREF(fg_color));
         }
 
-        state.component().draw(hwnd, state.location().clone(), hdc);
+        state.component().draw(hwnd, *state.location(), hdc);
 
         unsafe {
             DeleteObject(pen);

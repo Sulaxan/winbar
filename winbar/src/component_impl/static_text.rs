@@ -30,7 +30,7 @@ impl StaticTextComponent {
 #[async_trait]
 impl Component for StaticTextComponent {
     fn styles(&self) -> Arc<StyleOptions> {
-        return self.styles.clone();
+        self.styles.clone()
     }
 
     fn width(&self, _hwnd: HWND, hdc: HDC) -> i32 {

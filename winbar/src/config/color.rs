@@ -1,17 +1,47 @@
-use std::str::FromStr;
+use std::{marker::PhantomData, str::FromStr};
 
 use anyhow::bail;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
+use serde::{
+    de::{self, Visitor},
+    Deserialize, Deserializer, Serialize,
+};
 use thiserror::Error;
 use winbar::{color::Color, util::hex_parser};
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub enum ColorConfig {
-    Rgb { r: u32, g: u32, b: u32 },
-    Argb { r: u32, g: u32, b: u32, alpha: u32 },
+    Rgb {
+        r: u32,
+        g: u32,
+        b: u32,
+    },
+    Argb {
+        r: u32,
+        g: u32,
+        b: u32,
+        alpha: u32,
+    },
     Hex(String),
     Transparent,
+    /// Represents that the color should propogate to the next higher scopes's default color. This
+    /// type does not exist past the config stage, and is thus invalid to convert into a `Color`.
+    ///
+    /// Note that this variant exists as a replacement for the None variant of Option<ColorConfig>
+    /// to make it easier to parse `ColorConfig` from a string or map type using serde.
+    #[default]
+    Default,
+}
+
+impl ColorConfig {
+    /// Transforms this `ColorConfig` into an `Option` of `Color`. Note that this method exists as
+    /// not all `ColorConfig` variants exist within `Color`.
+    pub fn into_color_option(self) -> Option<Color> {
+        match self {
+            ColorConfig::Default => None,
+            _ => Some(self.into()),
+        }
+    }
 }
 
 impl From<ColorConfig> for Color {
@@ -37,6 +67,7 @@ impl From<ColorConfig> for Color {
                 }
             }
             ColorConfig::Transparent => Color::Transparent,
+            ColorConfig::Default => panic!("Cannot convert default into valid Color"),
         }
     }
 }
@@ -57,8 +88,8 @@ impl FromStr for ColorConfig {
     type Err = ColorParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let re = Regex::new("(?<function>.+)\\((?<color>.+)\\)")
-            .map_err(|e| ColorParseError::CouldNotCompileRegex(e))?;
+        let re = Regex::new("(?<function>.+)\\((?<color>.*)\\)")
+            .map_err(ColorParseError::CouldNotCompileRegex)?;
         match re.captures(s) {
             Some(captures) => {
                 // capture groups should exist
@@ -66,12 +97,10 @@ impl FromStr for ColorConfig {
                 let color = captures.name("color").unwrap().as_str();
 
                 match function.to_lowercase().as_str() {
-                    "rgb" | "rgba" => {
-                        parse_inline_rgba(color).map_err(|e| ColorParseError::ParseError(e))
-                    }
+                    "rgb" | "rgba" => parse_inline_rgba(color).map_err(ColorParseError::ParseError),
                     "hex" => {
-                        let hex = hex_parser::parse_color(color)
-                            .map_err(|e| ColorParseError::ParseError(e))?;
+                        let hex =
+                            hex_parser::parse_color(color).map_err(ColorParseError::ParseError)?;
 
                         Ok(match hex.alpha() {
                             Some(alpha) => ColorConfig::Argb {
@@ -87,6 +116,7 @@ impl FromStr for ColorConfig {
                             },
                         })
                     }
+                    "transparent" => Ok(ColorConfig::Transparent),
                     _ => Err(ColorParseError::InvalidFunction(function.to_string())),
                 }
             }
@@ -121,4 +151,46 @@ fn parse_inline_rgba(color: &str) -> anyhow::Result<ColorConfig> {
         }
         None => bail!("Invalid inline RGB sequence: {}", color),
     }
+}
+
+/// Parses a color as either a string or `ColorConfig`. Primarily used to deserialize a color in a
+/// struct with serde.
+///
+/// Based on: https://serde.rs/string-or-struct.html
+pub fn parse_string_or_color_config<'de, T, D>(deserialier: D) -> Result<T, D::Error>
+where
+    T: Deserialize<'de> + FromStr<Err = ColorParseError>,
+    D: Deserializer<'de>,
+{
+    // This is a Visitor that forwards string types to T's `FromStr` impl and forwards map types to
+    // T's `Deserialize` impl. The `PhantomData` is to keep the compiler from complaining about T
+    // being an unused generic type parameter. We need T in order to know the Value type for the
+    // Visitor impl.
+    struct StringOrColorConfig<T>(PhantomData<fn() -> T>);
+
+    impl<'de, T> Visitor<'de> for StringOrColorConfig<T>
+    where
+        T: Deserialize<'de> + FromStr<Err = ColorParseError>,
+    {
+        type Value = T;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("string or map")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(FromStr::from_str(v).unwrap())
+        }
+
+        fn visit_map<M>(self, map: M) -> Result<Self::Value, M::Error>
+        where
+            M: serde::de::MapAccess<'de>,
+        {
+            Deserialize::deserialize(de::value::MapAccessDeserializer::new(map))
+        }
+    }
+    deserialier.deserialize_any(StringOrColorConfig(PhantomData))
 }

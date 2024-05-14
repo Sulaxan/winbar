@@ -31,7 +31,6 @@ fn default_font_size() -> i32 {
     18
 }
 
-
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     /// The width of the window
@@ -48,10 +47,13 @@ pub struct Config {
     #[serde(default = "default_component_gap")]
     pub component_gap: i32,
     /// The background color of the status bar
+    #[serde(deserialize_with = "color::parse_string_or_color_config")]
     pub status_bar_bg_color: ColorConfig,
     /// The default background color of components
+    #[serde(deserialize_with = "color::parse_string_or_color_config")]
     pub default_component_bg_color: ColorConfig,
     /// The default foreground color of components
+    #[serde(deserialize_with = "color::parse_string_or_color_config")]
     pub default_component_fg_color: ColorConfig,
     /// The default font of components
     pub default_font: String,
@@ -175,8 +177,10 @@ impl From<BorderStyleConfig> for BorderStyle {
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct StyleConfig {
-    pub bg_color: Option<ColorConfig>,
-    pub fg_color: Option<ColorConfig>,
+    #[serde(deserialize_with = "color::parse_string_or_color_config", default)]
+    pub bg_color: ColorConfig,
+    #[serde(deserialize_with = "color::parse_string_or_color_config", default)]
+    pub fg_color: ColorConfig,
     #[serde(default)]
     pub border_style: BorderStyleConfig,
     pub font: Option<String>,
@@ -188,8 +192,8 @@ pub struct StyleConfig {
 impl From<StyleConfig> for StyleOptions {
     fn from(value: StyleConfig) -> Self {
         Self {
-            bg_color: value.bg_color.map(|c| c.into()),
-            fg_color: value.fg_color.map(|c| c.into()),
+            bg_color: value.bg_color.into_color_option(),
+            fg_color: value.fg_color.into_color_option(),
             border_style: value.border_style.into(),
             font: value.font,
             font_size: value.font_size,
