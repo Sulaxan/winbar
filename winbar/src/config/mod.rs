@@ -7,9 +7,7 @@ use std::{
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use winbar::{
-    color::Color,
     styles::{BorderStyle, StyleOptions},
-    util::hex_parser,
     Component,
 };
 
@@ -21,6 +19,10 @@ use crate::{
     POSITION_X, POSITION_Y, STATUS_BAR_BG_COLOR, WIDTH,
 };
 
+use self::color::ColorConfig;
+
+mod color;
+
 fn default_component_gap() -> i32 {
     10
 }
@@ -29,40 +31,6 @@ fn default_font_size() -> i32 {
     18
 }
 
-#[derive(Clone, Serialize, Deserialize)]
-pub enum ColorConfig {
-    Rgb { r: u32, g: u32, b: u32 },
-    Argb { r: u32, g: u32, b: u32, alpha: u32 },
-    Hex(String),
-    Transparent,
-}
-
-impl From<ColorConfig> for Color {
-    fn from(value: ColorConfig) -> Self {
-        match value {
-            ColorConfig::Rgb { r, g, b } => Color::Rgb { r, g, b },
-            ColorConfig::Argb { r, g, b, alpha } => Color::Argb { r, g, b, alpha },
-            ColorConfig::Hex(hex) => {
-                let color = hex_parser::parse_color(&hex).unwrap();
-                if let Some(alpha) = color.alpha() {
-                    Color::Argb {
-                        r: *color.r(),
-                        g: *color.g(),
-                        b: *color.b(),
-                        alpha: *alpha,
-                    }
-                } else {
-                    Color::Rgb {
-                        r: *color.r(),
-                        g: *color.g(),
-                        b: *color.b(),
-                    }
-                }
-            }
-            ColorConfig::Transparent => Color::Transparent,
-        }
-    }
-}
 
 #[derive(Serialize, Deserialize)]
 pub struct Config {
@@ -209,9 +177,11 @@ impl From<BorderStyleConfig> for BorderStyle {
 pub struct StyleConfig {
     pub bg_color: Option<ColorConfig>,
     pub fg_color: Option<ColorConfig>,
+    #[serde(default)]
     pub border_style: BorderStyleConfig,
     pub font: Option<String>,
     pub font_size: Option<i32>,
+    #[serde(default)]
     pub padding_x: i32,
 }
 

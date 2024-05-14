@@ -1,0 +1,124 @@
+use std::str::FromStr;
+
+use anyhow::bail;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use winbar::{color::Color, util::hex_parser};
+
+#[derive(Clone, Serialize, Deserialize)]
+pub enum ColorConfig {
+    Rgb { r: u32, g: u32, b: u32 },
+    Argb { r: u32, g: u32, b: u32, alpha: u32 },
+    Hex(String),
+    Transparent,
+}
+
+impl From<ColorConfig> for Color {
+    fn from(value: ColorConfig) -> Self {
+        match value {
+            ColorConfig::Rgb { r, g, b } => Color::Rgb { r, g, b },
+            ColorConfig::Argb { r, g, b, alpha } => Color::Argb { r, g, b, alpha },
+            ColorConfig::Hex(hex) => {
+                let color = hex_parser::parse_color(&hex).unwrap();
+                if let Some(alpha) = color.alpha() {
+                    Color::Argb {
+                        r: *color.r(),
+                        g: *color.g(),
+                        b: *color.b(),
+                        alpha: *alpha,
+                    }
+                } else {
+                    Color::Rgb {
+                        r: *color.r(),
+                        g: *color.g(),
+                        b: *color.b(),
+                    }
+                }
+            }
+            ColorConfig::Transparent => Color::Transparent,
+        }
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum ColorParseError {
+    #[error("could not compile regex")]
+    CouldNotCompileRegex(#[from] regex::Error),
+    #[error("specified color in invalid format: {0}")]
+    InvalidColorFunctionSyntax(String),
+    #[error("invalid color function: {0}")]
+    InvalidFunction(String),
+    #[error("error parsing color: {0}")]
+    ParseError(#[from] anyhow::Error),
+}
+
+impl FromStr for ColorConfig {
+    type Err = ColorParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let re = Regex::new("(?<function>.+)\\((?<color>.+)\\)")
+            .map_err(|e| ColorParseError::CouldNotCompileRegex(e))?;
+        match re.captures(s) {
+            Some(captures) => {
+                // capture groups should exist
+                let function = captures.name("function").unwrap().as_str();
+                let color = captures.name("color").unwrap().as_str();
+
+                match function.to_lowercase().as_str() {
+                    "rgb" | "rgba" => {
+                        parse_inline_rgba(color).map_err(|e| ColorParseError::ParseError(e))
+                    }
+                    "hex" => {
+                        let hex = hex_parser::parse_color(color)
+                            .map_err(|e| ColorParseError::ParseError(e))?;
+
+                        Ok(match hex.alpha() {
+                            Some(alpha) => ColorConfig::Argb {
+                                r: *hex.r(),
+                                g: *hex.g(),
+                                b: *hex.b(),
+                                alpha: *alpha,
+                            },
+                            _ => ColorConfig::Rgb {
+                                r: *hex.r(),
+                                g: *hex.g(),
+                                b: *hex.b(),
+                            },
+                        })
+                    }
+                    _ => Err(ColorParseError::InvalidFunction(function.to_string())),
+                }
+            }
+            _ => Err(ColorParseError::InvalidColorFunctionSyntax(s.to_string())),
+        }
+    }
+}
+
+/// Parses an inline rgb color.
+///
+/// Valid colors:
+/// - 1,1,1
+/// - 11, 22, 33
+/// - 12 545 389
+fn parse_inline_rgba(color: &str) -> anyhow::Result<ColorConfig> {
+    let re = Regex::new("^(?<r>[0-9]{1,3}),?\\s?(?<g>[0-9]{1,3}),?\\s?(?<b>[0-9]{1,3})(,?\\s?(?<alpha>[0-9]{1,3}))?$")?;
+    match re.captures(color) {
+        Some(captures) => {
+            // should be guaranteed r, g, b capture groups exist
+            let r = captures.name("r").unwrap().as_str().parse()?;
+            let g = captures.name("g").unwrap().as_str().parse()?;
+            let b = captures.name("b").unwrap().as_str().parse()?;
+            Ok(match captures.name("alpha") {
+                Some(mat) => ColorConfig::Argb {
+                    r,
+                    g,
+                    b,
+                    alpha: mat.as_str().parse()?,
+                },
+                _ => ColorConfig::Rgb { r, g, b },
+            })
+        }
+        None => bail!("Invalid inline RGB sequence: {}", color),
+    }
+}
