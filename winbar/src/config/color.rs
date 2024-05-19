@@ -67,7 +67,7 @@ impl From<ColorConfig> for Color {
                 }
             }
             ColorConfig::Transparent => Color::Transparent,
-            ColorConfig::Default => panic!("Cannot convert default into valid Color"),
+            ColorConfig::Default => panic!("Cannot convert Default into valid Color"),
         }
     }
 }
