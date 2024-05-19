@@ -1,13 +1,11 @@
 use std::sync::{atomic::Ordering, Arc};
 
+use getset::Getters;
 use serde::{Deserialize, Serialize};
 use tokio::task::LocalSet;
 use tracing::instrument;
-use winbar::{Component, WinbarContext};
-use windows::Win32::{
-    Foundation::{HWND, RECT},
-    Graphics::Gdi::HDC,
-};
+use winbar::{util::rect::Rect, Component, WinbarContext};
+use windows::Win32::{Foundation::HWND, Graphics::Gdi::HDC};
 
 use crate::{COMPONENT_GAP, HEIGHT, WIDTH};
 
@@ -18,9 +16,13 @@ pub enum ComponentLocation {
     RIGHT,
 }
 
+#[derive(Getters)]
 pub struct ComponentState {
+    #[getset(get = "pub")]
     location_intention: ComponentLocation,
-    location: RECT,
+    #[getset(get = "pub")]
+    location: Rect,
+    #[getset(get = "pub")]
     component: Arc<dyn Component + Send + Sync>,
 }
 
@@ -49,6 +51,13 @@ impl ComponentManager {
             .for_each(|state| state.component.draw(hwnd, state.location, hdc))
     }
 
+    pub fn for_each<F>(&self, f: F)
+    where
+        F: Fn(&ComponentState),
+    {
+        self.components.iter().for_each(f);
+    }
+
     pub fn start(&mut self, ctx: WinbarContext, hwnd: HWND) -> LocalSet {
         let set = LocalSet::new();
 
@@ -72,7 +81,7 @@ impl ComponentManager {
     ) {
         self.components.push(ComponentState {
             location_intention: location,
-            location: RECT::default(),
+            location: Rect::default(),
             component,
         })
     }
@@ -91,11 +100,11 @@ impl ComponentManager {
             .filter(|state| state.location_intention == ComponentLocation::LEFT)
             .for_each(|state| {
                 let component_width = state.component.width(hwnd, hdc);
-                state.location = RECT {
-                    top: 0,
-                    bottom: height,
-                    left: curr_loc_x,
-                    right: curr_loc_x + component_width,
+                state.location = Rect {
+                    x: curr_loc_x,
+                    y: 0,
+                    width: component_width,
+                    height,
                 };
                 curr_loc_x += component_width + gap;
             });
@@ -107,11 +116,11 @@ impl ComponentManager {
             .filter(|state| state.location_intention == ComponentLocation::RIGHT)
             .for_each(|state| {
                 let component_width = state.component.width(hwnd, hdc);
-                state.location = RECT {
-                    top: 0,
-                    bottom: height,
-                    left: curr_loc_x - component_width,
-                    right: curr_loc_x,
+                state.location = Rect {
+                    x: curr_loc_x - component_width,
+                    y: 0,
+                    width: component_width,
+                    height,
                 };
                 curr_loc_x -= component_width + gap;
             });
@@ -144,11 +153,11 @@ impl ComponentManager {
             .filter(|c| c.location_intention == ComponentLocation::MIDDLE)
             .for_each(|state| {
                 let component_width = state.component.width(hwnd, hdc);
-                state.location = RECT {
-                    top: 0,
-                    bottom: height,
-                    left: curr_loc_x,
-                    right: curr_loc_x + component_width,
+                state.location = Rect {
+                    x: curr_loc_x,
+                    y: 0,
+                    width: component_width,
+                    height,
                 };
                 curr_loc_x += component_width + gap;
             });

@@ -6,15 +6,22 @@ use std::{
 
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
-use winbar::{color::Color, Component};
+use winbar::{
+    styles::{BorderStyle, StyleOptions},
+    Component,
+};
 
 use crate::{
     component_impl::{
         datetime::DateTimeComponent, manager::ComponentLocation, static_text::StaticTextComponent,
     },
     COMPONENT_GAP, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT, DEFAULT_FONT_SIZE, HEIGHT,
-    POSITION_X, POSITION_Y, WIDTH,
+    POSITION_X, POSITION_Y, STATUS_BAR_BG_COLOR, WIDTH,
 };
+
+use self::color::ColorConfig;
+
+mod color;
 
 fn default_component_gap() -> i32 {
     10
@@ -26,19 +33,34 @@ fn default_font_size() -> i32 {
 
 #[derive(Serialize, Deserialize)]
 pub struct Config {
+    /// The width of the window
     pub window_width: i32,
+    /// The height of the window
     pub window_height: i32,
+    /// The x position of the window
     #[serde(default)]
     pub position_x: i32,
+    /// The y position of the window
     #[serde(default)]
     pub position_y: i32,
+    /// The gap, in pixels, between components
     #[serde(default = "default_component_gap")]
     pub component_gap: i32,
-    pub default_bg_color: Color,
-    pub default_fg_color: Color,
+    /// The background color of the status bar
+    #[serde(deserialize_with = "color::parse_string_or_color_config")]
+    pub status_bar_bg_color: ColorConfig,
+    /// The default background color of components
+    #[serde(deserialize_with = "color::parse_string_or_color_config")]
+    pub default_component_bg_color: ColorConfig,
+    /// The default foreground color of components
+    #[serde(deserialize_with = "color::parse_string_or_color_config")]
+    pub default_component_fg_color: ColorConfig,
+    /// The default font of components
     pub default_font: String,
+    /// The default font size of components
     #[serde(default = "default_font_size")]
     pub default_font_size: i32,
+    /// All components that should be displayed in the status bar
     pub components: Vec<ComponentConfig>,
 }
 
@@ -60,16 +82,22 @@ impl Config {
         COMPONENT_GAP.store(self.component_gap, Ordering::SeqCst);
         DEFAULT_FONT_SIZE.store(self.default_font_size, Ordering::SeqCst);
         {
+            let mut status_bar_bg_color = STATUS_BAR_BG_COLOR
+                .lock()
+                .map_err(|e| anyhow!("Could not obtain status bar background color lock: {}", e))?;
+            *status_bar_bg_color = self.status_bar_bg_color.clone().into();
+        }
+        {
             let mut bg_color = DEFAULT_BG_COLOR
                 .lock()
                 .map_err(|e| anyhow!("Could not obtain default background color lock: {}", e))?;
-            *bg_color = self.default_bg_color.clone();
+            *bg_color = self.default_component_bg_color.clone().into();
         }
         {
             let mut fg_color = DEFAULT_FG_COLOR
                 .lock()
                 .map_err(|e| anyhow!("Could not obtain default foreground color lock: {}", e))?;
-            *fg_color = self.default_fg_color.clone();
+            *fg_color = self.default_component_fg_color.clone().into();
         }
         {
             let mut font = DEFAULT_FONT
@@ -90,12 +118,13 @@ impl Default for Config {
             position_x: 0,
             position_y: 0,
             component_gap: 10,
-            default_bg_color: Color::Rgb {
+            status_bar_bg_color: ColorConfig::Transparent,
+            default_component_bg_color: ColorConfig::Rgb {
                 r: 23,
                 g: 23,
                 b: 23,
             },
-            default_fg_color: Color::Rgb {
+            default_component_fg_color: ColorConfig::Rgb {
                 r: 33,
                 g: 181,
                 b: 80,
@@ -107,26 +136,68 @@ impl Default for Config {
                     location: ComponentLocation::LEFT,
                     component: ComponentData::StaticText {
                         text: "Winbar!".to_string(),
-                        padding_x: 10,
+                        styles: StyleConfig {
+                            padding_x: 10,
+                            ..Default::default()
+                        },
                     },
                 },
                 ComponentConfig {
                     location: ComponentLocation::LEFT,
                     component: ComponentData::DateTime {
                         format: "%F %r".to_string(),
-                        bg_color: Color::Rgb {
-                            r: 23,
-                            g: 23,
-                            b: 23,
-                        },
-                        fg_color: Color::Rgb {
-                            r: 33,
-                            g: 181,
-                            b: 80,
+                        styles: StyleConfig {
+                            padding_x: 10,
+                            ..Default::default()
                         },
                     },
                 },
             ],
+        }
+    }
+}
+
+#[derive(Clone, Default, Serialize, Deserialize)]
+pub enum BorderStyleConfig {
+    #[default]
+    Square,
+    Rounded {
+        radius: i32,
+    },
+}
+
+impl From<BorderStyleConfig> for BorderStyle {
+    fn from(value: BorderStyleConfig) -> Self {
+        match value {
+            BorderStyleConfig::Square => BorderStyle::Square,
+            BorderStyleConfig::Rounded { radius } => BorderStyle::Rounded { radius },
+        }
+    }
+}
+
+#[derive(Clone, Default, Serialize, Deserialize)]
+pub struct StyleConfig {
+    #[serde(deserialize_with = "color::parse_string_or_color_config", default)]
+    pub bg_color: ColorConfig,
+    #[serde(deserialize_with = "color::parse_string_or_color_config", default)]
+    pub fg_color: ColorConfig,
+    #[serde(default)]
+    pub border_style: BorderStyleConfig,
+    pub font: Option<String>,
+    pub font_size: Option<i32>,
+    #[serde(default)]
+    pub padding_x: i32,
+}
+
+impl From<StyleConfig> for StyleOptions {
+    fn from(value: StyleConfig) -> Self {
+        Self {
+            bg_color: value.bg_color.into_color_option(),
+            fg_color: value.fg_color.into_color_option(),
+            border_style: value.border_style.into(),
+            font: value.font,
+            font_size: value.font_size,
+            padding_x: value.padding_x,
         }
     }
 }
@@ -139,28 +210,21 @@ pub struct ComponentConfig {
 
 #[derive(Serialize, Deserialize)]
 pub enum ComponentData {
-    StaticText {
-        text: String,
-        padding_x: i32,
-    },
-    DateTime {
-        format: String,
-        bg_color: Color,
-        fg_color: Color,
-    },
+    StaticText { text: String, styles: StyleConfig },
+    DateTime { format: String, styles: StyleConfig },
 }
 
 impl ComponentData {
     pub fn to_component(&self) -> Arc<dyn Component + Sync + Send> {
         match self {
-            Self::StaticText { text, padding_x } => {
-                Arc::new(StaticTextComponent::new(text.to_string(), *padding_x))
-            }
-            Self::DateTime {
-                format,
-                fg_color: _,
-                bg_color: _,
-            } => Arc::new(DateTimeComponent::new(format.to_string())),
+            Self::StaticText { text, styles } => Arc::new(StaticTextComponent::new(
+                text.to_string(),
+                styles.clone().into(),
+            )),
+            Self::DateTime { format, styles } => Arc::new(DateTimeComponent::new(
+                format.to_string(),
+                styles.clone().into(),
+            )),
         }
     }
 }

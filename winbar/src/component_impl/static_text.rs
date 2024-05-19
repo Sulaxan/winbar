@@ -1,89 +1,82 @@
-use std::mem::MaybeUninit;
+use std::sync::Arc;
 
 use async_trait::async_trait;
-use winbar::{Component, WinbarContext};
+use winbar::{
+    styles::{StyleOptions, Styles},
+    util::rect::Rect,
+    Component, WinbarContext,
+};
 use windows::Win32::{
-    Foundation::{HWND, RECT, SIZE},
-    Graphics::{
-        Gdi::{DrawTextW, GetTextExtentPoint32W, DT_CENTER, DT_SINGLELINE, DT_VCENTER, HDC},
-        GdiPlus::{
-            GdipCreateFromHDC, GdipCreatePen1, GdipDeleteBrush, GdipDeleteGraphics, GdipDeletePen,
-            GdipFillRectangle, GdipGetPenBrushFill, UnitPixel,
-        },
-    },
+    Foundation::{HWND, SIZE},
+    Graphics::Gdi::{DrawTextW, GetTextExtentPoint32W, DT_CENTER, DT_SINGLELINE, DT_VCENTER, HDC},
 };
 
-use crate::{windows_api::WindowsApi, DEFAULT_BG_COLOR};
+use crate::windows_api::WindowsApi;
 
 pub struct StaticTextComponent {
     text: String,
-    padding_x: i32,
+    styles: Arc<StyleOptions>,
 }
 
 impl StaticTextComponent {
-    pub fn new(text: String, padding_x: i32) -> Self {
-        Self { text, padding_x }
+    pub fn new(text: String, styles: StyleOptions) -> Self {
+        Self {
+            text,
+            styles: Arc::new(styles),
+        }
     }
 }
 
 #[async_trait]
 impl Component for StaticTextComponent {
+    fn styles(&self) -> Arc<StyleOptions> {
+        self.styles.clone()
+    }
+
     fn width(&self, _hwnd: HWND, hdc: HDC) -> i32 {
         unsafe {
             let mut length: SIZE = SIZE::default();
 
             GetTextExtentPoint32W(hdc, &WindowsApi::str_to_u16_slice(&self.text), &mut length);
 
-            length.cx + self.padding_x * 2
+            length.cx + self.styles.padding_x * 2
         }
     }
 
-    fn draw(&self, _hwnd: HWND, mut rect: RECT, hdc: HDC) {
-        let default_bg_color = {
-            let color = DEFAULT_BG_COLOR.lock().unwrap();
-            color.argb()
-        };
+    fn draw(&self, _hwnd: HWND, rect: Rect, hdc: HDC) {
+        Styles::draw_rect(hdc, &rect, &self.styles.border_style);
 
         unsafe {
-            let mut graphics = MaybeUninit::uninit();
-            GdipCreateFromHDC(hdc, graphics.as_mut_ptr());
+            // let mut graphics = MaybeUninit::uninit();
+            // GdipCreateFromHDC(hdc, graphics.as_mut_ptr());
 
-            // based on: https://github.com/davidrios/gdiplus-rs
-            let g = graphics.assume_init();
+            // // based on: https://github.com/davidrios/gdiplus-rs
+            // let g = graphics.assume_init();
 
-            let mut bg_pen = MaybeUninit::uninit();
-            GdipCreatePen1(default_bg_color, 1.0, UnitPixel, bg_pen.as_mut_ptr());
+            // let mut bg_pen = MaybeUninit::uninit();
+            // GdipCreatePen1(default_bg_color, 1.0, UnitPixel, bg_pen.as_mut_ptr());
 
-            let pen = bg_pen.assume_init();
+            // let pen = bg_pen.assume_init();
 
-            let mut bg_brush = MaybeUninit::uninit();
-            GdipGetPenBrushFill(pen, bg_brush.as_mut_ptr());
+            // let mut bg_brush = MaybeUninit::uninit();
+            // GdipGetPenBrushFill(pen, bg_brush.as_mut_ptr());
 
-            let brush = bg_brush.assume_init();
+            // let brush = bg_brush.assume_init();
 
-            GdipFillRectangle(
-                g,
-                brush,
-                rect.left as f32,
-                rect.top as f32,
-                (rect.right - rect.left) as f32,
-                (rect.bottom - rect.top) as f32,
-            );
-
-            // RoundRect(hdc, rect.left, rect.top, rect.right, rect.bottom, 10, 10);
+            // GdipFillRectangleI(g, brush, rect.x, rect.y, rect.x2(), rect.y2());
 
             DrawTextW(
                 hdc,
                 &mut WindowsApi::str_to_u16_slice(&self.text),
-                &mut rect,
+                &mut rect.into(),
                 DT_SINGLELINE | DT_VCENTER | DT_CENTER,
             );
 
-            GdipDeleteBrush(brush);
-            GdipDeletePen(pen);
-            GdipDeleteGraphics(g);
+            // GdipDeleteBrush(brush);
+            // GdipDeletePen(pen);
+            // GdipDeleteGraphics(g);
         }
     }
 
-    async fn start(&self, _ctx: WinbarContext, _hwnd: HWND, _rect: RECT) {}
+    async fn start(&self, _ctx: WinbarContext, _hwnd: HWND, _rect: Rect) {}
 }
