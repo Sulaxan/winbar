@@ -5,13 +5,13 @@ Example JSON:
 ```
 "StaticText": {
     "text": "Winbar!",
-    "padding_x": 10
+    "styles": { ... }
 }
 ```
 
 ## Fields
 
-| Key         | Description                                                                    |
-| ----------- | ------------------------------------------------------------------------------ |
-| `text`      | The text to display                                                            |
-| `padding_x` | The x-padding (i.e., padding to the left and right) of the component in pixels |
+| Key      | Description                                                         |
+| -------- | ------------------------------------------------------------------- |
+| `text`   | The text to display                                                 |
+| `styles` | The styles to apply to the component. See [styling](../styling.md). |

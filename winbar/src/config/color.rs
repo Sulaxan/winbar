@@ -16,7 +16,7 @@ pub enum ColorConfig {
         g: u32,
         b: u32,
     },
-    Argb {
+    Rgba {
         r: u32,
         g: u32,
         b: u32,
@@ -48,11 +48,11 @@ impl From<ColorConfig> for Color {
     fn from(value: ColorConfig) -> Self {
         match value {
             ColorConfig::Rgb { r, g, b } => Color::Rgb { r, g, b },
-            ColorConfig::Argb { r, g, b, alpha } => Color::Argb { r, g, b, alpha },
+            ColorConfig::Rgba { r, g, b, alpha } => Color::Rgba { r, g, b, alpha },
             ColorConfig::Hex(hex) => {
                 let color = hex_parser::parse_color(&hex).unwrap();
                 if let Some(alpha) = color.alpha() {
-                    Color::Argb {
+                    Color::Rgba {
                         r: *color.r(),
                         g: *color.g(),
                         b: *color.b(),
@@ -103,7 +103,7 @@ impl FromStr for ColorConfig {
                             hex_parser::parse_color(color).map_err(ColorParseError::ParseError)?;
 
                         Ok(match hex.alpha() {
-                            Some(alpha) => ColorConfig::Argb {
+                            Some(alpha) => ColorConfig::Rgba {
                                 r: *hex.r(),
                                 g: *hex.g(),
                                 b: *hex.b(),
@@ -140,7 +140,7 @@ fn parse_inline_rgba(color: &str) -> anyhow::Result<ColorConfig> {
             let g = captures.name("g").unwrap().as_str().parse()?;
             let b = captures.name("b").unwrap().as_str().parse()?;
             Ok(match captures.name("alpha") {
-                Some(mat) => ColorConfig::Argb {
+                Some(mat) => ColorConfig::Rgba {
                     r,
                     g,
                     b,
