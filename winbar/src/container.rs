@@ -1,5 +1,9 @@
-use std::sync::{atomic::Ordering, mpsc::Receiver};
+use std::{
+    collections::HashMap,
+    sync::{atomic::Ordering, mpsc::Receiver, RwLock},
+};
 
+use lazy_static::lazy_static;
 use tracing::instrument;
 use winbar::{color::Color, styles::Styles, WinbarAction};
 use windows::{
@@ -7,8 +11,9 @@ use windows::{
     Win32::{
         Foundation::{COLORREF, HWND, LPARAM, LRESULT, WPARAM},
         Graphics::Gdi::{
-            BeginPaint, CreateSolidBrush, DeleteObject, EndPaint, InvalidateRect, SelectObject,
-            SetBkColor, SetTextColor, HDC, PAINTSTRUCT, PS_SOLID,
+            BeginPaint, BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, CreateSolidBrush,
+            DeleteDC, DeleteObject, EndPaint, GetDC, InvalidateRect, SelectObject, SetBkColor,
+            SetTextColor, HBITMAP, HDC, PAINTSTRUCT, PS_SOLID, SRCCOPY,
         },
         System::{
             LibraryLoader::GetModuleHandleW,
@@ -17,8 +22,8 @@ use windows::{
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, DispatchMessageW, PeekMessageW, PostQuitMessage,
             RegisterClassW, SetLayeredWindowAttributes, ShowWindow, TranslateMessage, LWA_COLORKEY,
-            MSG, PM_REMOVE, SW_SHOWNORMAL, WM_CLOSE, WM_DESTROY, WM_PAINT, WNDCLASSW,
-            WS_EX_LAYERED, WS_EX_TOOLWINDOW, WS_POPUP, WS_VISIBLE,
+            MSG, PM_REMOVE, SW_SHOWNORMAL, WM_CLOSE, WM_DESTROY, WM_ERASEBKGND, WM_PAINT,
+            WNDCLASSW, WS_EX_LAYERED, WS_EX_TOOLWINDOW, WS_POPUP, WS_VISIBLE,
         },
     },
 };
@@ -28,7 +33,15 @@ use crate::{
     DEFAULT_FONT_SIZE, HEIGHT, WIDTH,
 };
 
+lazy_static! {
+    // HWND -> HBITMAP
+    // we use isize since HWND is not hashable
+    static ref WINDOW_BUFFERS: RwLock<HashMap<isize, HBITMAP>> = RwLock::new(HashMap::new());
+}
+
 pub fn create_window(bg_color: Color) -> HWND {
+    let width = WIDTH.load(Ordering::SeqCst);
+    let height = HEIGHT.load(Ordering::SeqCst);
     unsafe {
         let class_name = w!("winbar");
         let h_inst = GetModuleHandleW(None).unwrap();
@@ -55,13 +68,21 @@ pub fn create_window(bg_color: Color) -> HWND {
             WS_POPUP | WS_VISIBLE,
             0,
             0,
-            WIDTH.load(Ordering::SeqCst),
-            HEIGHT.load(Ordering::SeqCst),
+            width,
+            height,
             None,
             None,
             h_inst,
             None,
         );
+
+        // create window buffer
+        let hdc = GetDC(hwnd);
+        let bitmap = CreateCompatibleBitmap(hdc, width, height);
+        {
+            let mut buffers = WINDOW_BUFFERS.write().unwrap();
+            buffers.insert(hwnd.0, bitmap);
+        }
 
         SetLayeredWindowAttributes(hwnd, COLORREF(Color::Transparent.bgr()), 25, LWA_COLORKEY).ok();
 
@@ -103,6 +124,18 @@ pub fn listen(hwnd: HWND, recv: Receiver<WinbarAction>) {
 
         if msg.message == WM_CLOSE {
             break;
+        }
+    }
+
+    // cleanup
+
+    // release window buffer
+    {
+        let mut buffers = WINDOW_BUFFERS.write().unwrap();
+        if let Some(bitmap) = buffers.remove(&hwnd.0) {
+            unsafe {
+                DeleteObject(bitmap);
+            }
         }
     }
 
@@ -188,14 +221,31 @@ pub extern "system" fn window_proc(
                 let mut ps = PAINTSTRUCT::default();
                 let hdc = BeginPaint(hwnd, &mut ps);
 
-                paint(hwnd, hdc);
+                // double buffered window
+                let buffers = WINDOW_BUFFERS.read().unwrap();
+                if let Some(buffer) = buffers.get(&hwnd.0) {
+                    let hdc_buffer = CreateCompatibleDC(hdc);
+                    let old_hdc = SelectObject(hdc_buffer, *buffer);
+                    let width = WIDTH.load(Ordering::SeqCst);
+                    let height = HEIGHT.load(Ordering::SeqCst);
+
+                    paint(hwnd, hdc_buffer);
+
+                    BitBlt(hdc, 0, 0, width, height, hdc_buffer, 0, 0, SRCCOPY).unwrap();
+
+                    SelectObject(hdc_buffer, old_hdc);
+
+                    DeleteDC(hdc_buffer);
+                } else {
+                    paint(hwnd, hdc);
+                }
 
                 EndPaint(hwnd, &ps);
                 tracing::trace!("Finished painting");
             }
-            // WM_ERASEBKGND => {
-            //     return LRESULT(1);
-            // }
+            WM_ERASEBKGND => {
+                return LRESULT(1);
+            }
             WM_DESTROY => {
                 PostQuitMessage(0);
             }
