@@ -11,9 +11,9 @@ use windows::{
     Win32::{
         Foundation::{COLORREF, HWND, LPARAM, LRESULT, WPARAM},
         Graphics::Gdi::{
-            BeginPaint, CreateCompatibleBitmap, CreateCompatibleDC, CreateSolidBrush, DeleteObject,
-            EndPaint, GetDC, InvalidateRect, SelectObject, SetBkColor, SetTextColor, HBITMAP, HDC,
-            PAINTSTRUCT, PS_SOLID,
+            BeginPaint, BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, CreateSolidBrush,
+            DeleteDC, DeleteObject, EndPaint, GetDC, InvalidateRect, SelectObject, SetBkColor,
+            SetTextColor, HBITMAP, HDC, PAINTSTRUCT, PS_SOLID, SRCCOPY,
         },
         System::{
             LibraryLoader::GetModuleHandleW,
@@ -221,7 +221,24 @@ pub extern "system" fn window_proc(
                 let mut ps = PAINTSTRUCT::default();
                 let hdc = BeginPaint(hwnd, &mut ps);
 
-                paint(hwnd, hdc);
+                // double buffered window
+                let buffers = WINDOW_BUFFERS.read().unwrap();
+                if let Some(buffer) = buffers.get(&hwnd.0) {
+                    let hdc_buffer = CreateCompatibleDC(hdc);
+                    let old_hdc = SelectObject(hdc_buffer, *buffer);
+                    let width = WIDTH.load(Ordering::SeqCst);
+                    let height = HEIGHT.load(Ordering::SeqCst);
+
+                    paint(hwnd, hdc_buffer);
+
+                    BitBlt(hdc, 0, 0, width, height, hdc_buffer, 0, 0, SRCCOPY).unwrap();
+
+                    SelectObject(hdc_buffer, old_hdc);
+
+                    DeleteDC(hdc_buffer);
+                } else {
+                    paint(hwnd, hdc);
+                }
 
                 EndPaint(hwnd, &ps);
                 tracing::trace!("Finished painting");
