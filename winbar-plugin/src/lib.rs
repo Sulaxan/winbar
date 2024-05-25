@@ -16,6 +16,11 @@ pub struct PRect {
     pub height: i32,
 }
 
+/// A type representing a component's id.
+//TODO: include component id in the width, draw, start functions so that plugins
+// can store relevant data for each component id
+// component ids exist since a single plugin can render multiple components
+pub type ComponentId = u32;
 /// A function returning the id of the plugin.
 pub type FnId = unsafe extern "C" fn() -> *const c_char;
 /// A function returning the width of the component.
