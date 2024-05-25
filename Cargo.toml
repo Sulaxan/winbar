@@ -1,5 +1,5 @@
 [workspace]
-members = ["winbar", "winbarc"]
+members = ["winbar", "winbar-plugin", "winbar-plugin-test", "winbarc"]
 resolver = "2"
 
 [workspace.package]
