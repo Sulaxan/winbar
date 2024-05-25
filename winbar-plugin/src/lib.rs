@@ -2,6 +2,7 @@ use std::ffi::c_char;
 
 use windows::Win32::{Foundation::HWND, Graphics::Gdi::HDC};
 
+#[cfg(feature = "impl")]
 pub mod plugin;
 
 #[repr(C)]
@@ -17,16 +18,16 @@ pub struct PRect {
 }
 
 /// A type representing a component's id.
-//TODO: include component id in the width, draw, start functions so that plugins
-// can store relevant data for each component id
-// component ids exist since a single plugin can render multiple components
+///
+/// Since plugins can be used to render multiple components, a component id is used to differentiate
+/// each instance.
 pub type ComponentId = u32;
 /// A function returning the id of the plugin.
 pub type FnId = unsafe extern "C" fn() -> *const c_char;
 /// A function returning the width of the component.
-pub type FnWidth = unsafe extern "C" fn(HWND, HDC) -> i32;
+pub type FnWidth = unsafe extern "C" fn(ComponentId, HWND, HDC) -> i32;
 /// A function that draws the component within the given rect.
-pub type FnDraw = unsafe extern "C" fn(HWND, PRect, HDC);
+pub type FnDraw = unsafe extern "C" fn(ComponentId, HWND, PRect, HDC);
 /// A function that starts anything processes required by the plugin. It can be assumed that this
 /// function will be called in its own thread.
-pub type FnStart = unsafe extern "C" fn(HWND, PRect);
+pub type FnStart = unsafe extern "C" fn(ComponentId, HWND, PRect);

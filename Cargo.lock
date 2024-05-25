@@ -921,6 +921,7 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "winbar-plugin",
  "windows",
 ]
 
@@ -929,6 +930,7 @@ name = "winbar-plugin"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "getset",
  "libloading",
  "windows",
 ]

@@ -1,64 +1,72 @@
-use std::ffi::CStr;
+use std::{collections::HashMap, ffi::CStr};
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
+use getset::Getters;
 use libloading::Library;
 use windows::Win32::{Foundation::HWND, Graphics::Gdi::HDC};
 
-use crate::{FnDraw, FnId, FnStart, FnWidth, PRect};
+use crate::{ComponentId, FnDraw, FnId, FnStart, FnWidth, PRect};
 
-// #[cfg(feature = "impl")]
 pub struct Plugin {
     pub id: String,
     pub lib: Library,
 }
 
 impl Plugin {
-    pub fn width(&self, hwnd: HWND, hdc: HDC) -> Result<i32> {
+    pub fn unload(self) -> Result<()> {
+        self.lib
+            .close()
+            .with_context(|| "Error while unloading plugin")
+    }
+
+    pub fn width(&self, id: ComponentId, hwnd: HWND, hdc: HDC) -> Result<i32> {
         unsafe {
             let func: libloading::Symbol<FnWidth> = self
                 .lib
                 .get(b"width\0")
                 .with_context(|| "Could not find width function")?;
 
-            Ok(func(hwnd, hdc))
+            Ok(func(id, hwnd, hdc))
         }
     }
 
-    pub fn draw(&self, hwnd: HWND, rect: PRect, hdc: HDC) -> Result<()> {
+    pub fn draw(&self, id: ComponentId, hwnd: HWND, rect: PRect, hdc: HDC) -> Result<()> {
         unsafe {
             let func: libloading::Symbol<FnDraw> = self
                 .lib
                 .get(b"draw\0")
                 .with_context(|| "Could not find width function")?;
 
-            func(hwnd, rect, hdc);
+            func(id, hwnd, rect, hdc);
         }
 
         Ok(())
     }
 
-    pub fn start(&self, hwnd: HWND, rect: PRect) -> Result<()> {
+    pub fn start(&self, id: ComponentId, hwnd: HWND, rect: PRect) -> Result<()> {
         unsafe {
             let func: libloading::Symbol<FnStart> = self
                 .lib
                 .get(b"start\0")
                 .with_context(|| "Could not find width function")?;
 
-            func(hwnd, rect);
+            func(id, hwnd, rect)
         }
 
         Ok(())
     }
 }
 
+#[derive(Getters)]
 pub struct PluginManager {
-    pub plugins: Vec<Plugin>,
+    #[getset(get = "pub")]
+    plugins: HashMap<String, Plugin>,
 }
 
 impl PluginManager {
     pub fn new() -> Self {
         Self {
-            plugins: Vec::new(),
+            plugins: HashMap::new(),
         }
     }
 
@@ -70,15 +78,25 @@ impl PluginManager {
                 .get(b"id\0")
                 .with_context(|| "Could not find id function")?;
 
+            let id_string = CStr::from_ptr(id()).to_str()?.to_string();
+
             let plugin = Plugin {
-                id: CStr::from_ptr(id()).to_str()?.to_string(),
+                id: id_string.to_owned(),
                 lib,
             };
 
-            self.plugins.push(plugin);
+            self.plugins.insert(id_string, plugin);
         }
 
         Ok(())
+    }
+
+    pub fn unload(&mut self, plugin_id: &str) -> Result<()> {
+        if let Some(plugin) = self.plugins.remove(plugin_id) {
+            return plugin.unload();
+        }
+
+        bail!("Could not find plugin with id: {}", plugin_id)
     }
 }
 
@@ -93,6 +111,14 @@ mod test {
             .load("C:\\Users\\Encast\\development\\winbar\\target\\debug\\winbar_plugin_test.dll")
             .unwrap();
 
-        println!("{}", manager.plugins[0].width(HWND(0), HDC(1)).unwrap());
+        println!(
+            "{}",
+            manager
+                .plugins()
+                .get("test")
+                .unwrap()
+                .width(0, HWND(0), HDC(1))
+                .unwrap()
+        );
     }
 }

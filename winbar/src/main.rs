@@ -17,6 +17,7 @@ use tokio::runtime;
 use tracing::instrument;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
 use winbar::{color::Color, WinbarAction, WinbarContext, DEFAULT_HOSTNAME, DEFAULT_PORT};
+use winbar_plugin::plugin::PluginManager;
 use windows::Win32::Foundation::BOOL;
 use windows::Win32::{
     Foundation::HWND,
@@ -62,6 +63,7 @@ lazy_static! {
     static ref WINBAR_HWND: Arc<Mutex<HWND>> = Arc::new(Mutex::new(HWND(0)));
     static ref COMPONENT_MANAGER: Arc<Mutex<ComponentManager>> =
         Arc::new(Mutex::new(ComponentManager::new()));
+    static ref PLUGIN_MANAGER: Arc<Mutex<PluginManager>> = Arc::new(Mutex::new(PluginManager::new()));
 }
 
 pub fn gen_config(path: &PathBuf) {

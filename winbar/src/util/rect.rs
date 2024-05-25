@@ -1,3 +1,4 @@
+use winbar_plugin::PRect;
 use windows::Win32::Foundation::RECT;
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -31,6 +32,17 @@ impl From<Rect> for RECT {
             top: value.y,
             right: value.x2(),
             bottom: value.y2(),
+        }
+    }
+}
+
+impl From<Rect> for PRect {
+    fn from(value: Rect) -> Self {
+        Self {
+            x: value.x,
+            y: value.y,
+            width: value.width,
+            height: value.height,
         }
     }
 }
