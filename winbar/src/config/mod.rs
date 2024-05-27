@@ -13,10 +13,11 @@ use winbar::{
 
 use crate::{
     component_impl::{
-        datetime::DateTimeComponent, manager::ComponentLocation, static_text::StaticTextComponent,
+        datetime::DateTimeComponent, manager::ComponentLocation, plugin::PluginComponent,
+        static_text::StaticTextComponent,
     },
     COMPONENT_GAP, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT, DEFAULT_FONT_SIZE, HEIGHT,
-    POSITION_X, POSITION_Y, STATUS_BAR_BG_COLOR, WIDTH,
+    PLUGIN_DIR, PLUGIN_MANAGER, POSITION_X, POSITION_Y, STATUS_BAR_BG_COLOR, WIDTH,
 };
 
 use self::color::ColorConfig;
@@ -212,6 +213,7 @@ pub struct ComponentConfig {
 pub enum ComponentData {
     StaticText { text: String, styles: StyleConfig },
     DateTime { format: String, styles: StyleConfig },
+    Plugin { id: String, styles: StyleConfig },
 }
 
 impl ComponentData {
@@ -225,6 +227,21 @@ impl ComponentData {
                 format.to_string(),
                 styles.clone().into(),
             )),
+            Self::Plugin { id, styles } => {
+                let mut manager = PLUGIN_MANAGER.lock().unwrap();
+                let plugin_dir = PLUGIN_DIR.lock().unwrap();
+                let path = plugin_dir.join(format!("{id}.dll"));
+                if !path.is_file() {
+                    panic!(
+                        "Given plugin id {} is not a valid plugin in directory {}",
+                        id,
+                        plugin_dir.to_string_lossy()
+                    );
+                }
+                let plugin = manager.load(path.to_str().unwrap()).unwrap();
+
+                Arc::new(PluginComponent::new(plugin, styles.clone().into()))
+            }
         }
     }
 }

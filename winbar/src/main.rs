@@ -37,6 +37,14 @@ pub mod windows_api;
 // runtime variables
 static SERVER_PORT: AtomicI32 = AtomicI32::new(DEFAULT_PORT);
 
+lazy_static! {
+    static ref WINBAR_HWND: Arc<Mutex<HWND>> = Arc::new(Mutex::new(HWND(0)));
+    static ref COMPONENT_MANAGER: Arc<Mutex<ComponentManager>> =
+        Arc::new(Mutex::new(ComponentManager::new()));
+    static ref PLUGIN_MANAGER: Arc<Mutex<PluginManager>> =
+        Arc::new(Mutex::new(PluginManager::new()));
+}
+
 // config variables
 static WIDTH: AtomicI32 = AtomicI32::new(2560);
 static HEIGHT: AtomicI32 = AtomicI32::new(25);
@@ -60,10 +68,7 @@ lazy_static! {
     // Segoe UI Variable is the default windows font
     static ref DEFAULT_FONT: Arc<Mutex<String>> =
         Arc::new(Mutex::new("Segoe UI Variable".to_string()));
-    static ref WINBAR_HWND: Arc<Mutex<HWND>> = Arc::new(Mutex::new(HWND(0)));
-    static ref COMPONENT_MANAGER: Arc<Mutex<ComponentManager>> =
-        Arc::new(Mutex::new(ComponentManager::new()));
-    static ref PLUGIN_MANAGER: Arc<Mutex<PluginManager>> = Arc::new(Mutex::new(PluginManager::new()));
+    static ref PLUGIN_DIR: Arc<Mutex<PathBuf>> = Arc::new(Mutex::new(PathBuf::new()));
 }
 
 pub fn gen_config(path: &PathBuf) {

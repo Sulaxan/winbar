@@ -1,6 +1,6 @@
-use std::{collections::HashMap, ffi::CStr};
+use std::{collections::HashMap, ffi::CStr, sync::Arc};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use getset::Getters;
 use libloading::Library;
 use windows::Win32::{Foundation::HWND, Graphics::Gdi::HDC};
@@ -13,12 +13,6 @@ pub struct Plugin {
 }
 
 impl Plugin {
-    pub fn unload(self) -> Result<()> {
-        self.lib
-            .close()
-            .with_context(|| "Error while unloading plugin")
-    }
-
     pub fn width(&self, id: ComponentId, hwnd: HWND, hdc: HDC) -> Result<i32> {
         unsafe {
             let func: libloading::Symbol<FnWidth> = self
@@ -60,7 +54,7 @@ impl Plugin {
 #[derive(Getters)]
 pub struct PluginManager {
     #[getset(get = "pub")]
-    plugins: HashMap<String, Plugin>,
+    plugins: HashMap<String, Arc<Plugin>>,
 }
 
 impl PluginManager {
@@ -70,8 +64,8 @@ impl PluginManager {
         }
     }
 
-    /// Loads a plugin given its path.
-    pub fn load(&mut self, path: &str) -> Result<()> {
+    /// Loads a plugin given its path, and returns a reference to it.
+    pub fn load(&mut self, path: &str) -> Result<Arc<Plugin>> {
         unsafe {
             let lib = Library::new(path)?;
             let id: libloading::Symbol<FnId> = lib
@@ -80,23 +74,20 @@ impl PluginManager {
 
             let id_string = CStr::from_ptr(id()).to_str()?.to_string();
 
-            let plugin = Plugin {
+            let plugin = Arc::new(Plugin {
                 id: id_string.to_owned(),
                 lib,
-            };
+            });
 
-            self.plugins.insert(id_string, plugin);
+            self.plugins.insert(id_string, Arc::clone(&plugin));
+            Ok(plugin)
         }
-
-        Ok(())
     }
 
-    pub fn unload(&mut self, plugin_id: &str) -> Result<()> {
-        if let Some(plugin) = self.plugins.remove(plugin_id) {
-            return plugin.unload();
-        }
-
-        bail!("Could not find plugin with id: {}", plugin_id)
+    /// Unloads a plugin. Note that this method does not unload the underlying dynamic library until
+    /// all references to the plugin have been dropped.
+    pub fn unload(&mut self, plugin_id: &str) {
+        self.plugins.remove(plugin_id);
     }
 }
 
