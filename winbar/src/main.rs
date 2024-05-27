@@ -16,14 +16,13 @@ use lazy_static::lazy_static;
 use tokio::runtime;
 use tracing::instrument;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
-use winbar::{color::Color, WinbarAction, WinbarContext, DEFAULT_HOSTNAME, DEFAULT_PORT};
+use winbar::{color::Color, windows_api::WindowsApi, WinbarAction, WinbarContext, DEFAULT_HOSTNAME, DEFAULT_PORT};
 use winbar_plugin::plugin::PluginManager;
 use windows::Win32::Foundation::BOOL;
 use windows::Win32::{
     Foundation::HWND,
     System::Console::{SetConsoleCtrlHandler, CTRL_C_EVENT},
 };
-use windows_api::WindowsApi;
 
 use crate::server::WinbarServer;
 
@@ -32,7 +31,6 @@ pub mod component_impl;
 pub mod config;
 pub mod container;
 pub mod server;
-pub mod windows_api;
 
 // runtime variables
 static SERVER_PORT: AtomicI32 = AtomicI32::new(DEFAULT_PORT);

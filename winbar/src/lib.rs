@@ -11,6 +11,7 @@ pub mod color;
 pub mod protocol;
 pub mod styles;
 pub mod util;
+pub mod windows_api;
 
 pub const DEFAULT_PORT: i32 = 10989;
 pub const DEFAULT_HOSTNAME: &str = "localhost";

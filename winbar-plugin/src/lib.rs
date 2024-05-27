@@ -5,6 +5,7 @@ use windows::Win32::{Foundation::HWND, Graphics::Gdi::HDC};
 #[cfg(feature = "impl")]
 pub mod plugin;
 
+#[derive(Clone, Copy, Debug, Default)]
 #[repr(C)]
 pub struct PRect {
     /// The x value of the top left corner of the rect.

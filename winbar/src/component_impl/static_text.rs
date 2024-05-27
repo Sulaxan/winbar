@@ -2,16 +2,13 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use winbar::{
-    styles::{StyleOptions, Styles},
-    util::rect::Rect,
-    Component, WinbarContext,
+    styles::{StyleOptions, Styles}, util::rect::Rect, windows_api::WindowsApi, Component, WinbarContext
 };
 use windows::Win32::{
     Foundation::{HWND, SIZE},
     Graphics::Gdi::{DrawTextW, GetTextExtentPoint32W, DT_CENTER, DT_SINGLELINE, DT_VCENTER, HDC},
 };
 
-use crate::windows_api::WindowsApi;
 
 pub struct StaticTextComponent {
     text: String,

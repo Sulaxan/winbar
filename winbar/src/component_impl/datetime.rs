@@ -4,16 +4,12 @@ use async_trait::async_trait;
 use chrono::Local;
 use tokio::time::{self};
 use winbar::{
-    styles::{StyleOptions, Styles},
-    util::rect::Rect,
-    Component, WinbarAction, WinbarContext,
+    styles::{StyleOptions, Styles}, util::rect::Rect, windows_api::WindowsApi, Component, WinbarAction, WinbarContext
 };
 use windows::Win32::{
     Foundation::{HWND, SIZE},
     Graphics::Gdi::{DrawTextW, GetTextExtentPoint32W, DT_CENTER, DT_SINGLELINE, DT_VCENTER, HDC},
 };
-
-use crate::windows_api::WindowsApi;
 
 pub struct DateTimeComponent {
     pub format: String,

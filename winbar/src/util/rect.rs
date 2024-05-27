@@ -46,3 +46,14 @@ impl From<Rect> for PRect {
         }
     }
 }
+
+impl From<PRect> for Rect {
+    fn from(value: PRect) -> Self {
+        Self {
+            x: value.x,
+            y: value.y,
+            width: value.width,
+            height: value.height,
+        }
+    }
+}

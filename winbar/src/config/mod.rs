@@ -4,7 +4,7 @@ use std::{
     sync::{atomic::Ordering, Arc},
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use winbar::{
     styles::{BorderStyle, StyleOptions},
@@ -61,6 +61,8 @@ pub struct Config {
     /// The default font size of components
     #[serde(default = "default_font_size")]
     pub default_font_size: i32,
+    /// The path of the plugin directory
+    pub plugin_dir: PathBuf,
     /// All components that should be displayed in the status bar
     pub components: Vec<ComponentConfig>,
 }
@@ -106,6 +108,21 @@ impl Config {
                 .map_err(|e| anyhow!("Could not obtain default foreground color lock: {}", e))?;
             *font = self.default_font.to_string();
         }
+        {
+            if !self.plugin_dir.is_dir() {
+                bail!(
+                    "Invalid plugin directory: {}",
+                    self.plugin_dir
+                        .to_str()
+                        .ok_or_else(|| anyhow!("Directory string not valid unicode"))?
+                );
+            }
+
+            let mut plugin_dir = PLUGIN_DIR
+                .lock()
+                .map_err(|e| anyhow!("Could not obtain plugin directory lock: {}", e))?;
+            *plugin_dir = self.plugin_dir.clone();
+        }
 
         Ok(())
     }
@@ -132,6 +149,7 @@ impl Default for Config {
             },
             default_font: "Segoe IO Variable".to_string(),
             default_font_size: 18,
+            plugin_dir: PathBuf::new(),
             components: vec![
                 ComponentConfig {
                     location: ComponentLocation::LEFT,
@@ -230,12 +248,13 @@ impl ComponentData {
             Self::Plugin { id, styles } => {
                 let mut manager = PLUGIN_MANAGER.lock().unwrap();
                 let plugin_dir = PLUGIN_DIR.lock().unwrap();
-                let path = plugin_dir.join(format!("{id}.dll"));
+                let path = plugin_dir.join(format!("{}.dll", id));
                 if !path.is_file() {
                     panic!(
-                        "Given plugin id {} is not a valid plugin in directory {}",
+                        "Plugin id {} is not a valid plugin in directory {}, ({})",
                         id,
-                        plugin_dir.to_string_lossy()
+                        plugin_dir.to_str().unwrap(),
+                        path.to_str().unwrap()
                     );
                 }
                 let plugin = manager.load(path.to_str().unwrap()).unwrap();

@@ -5,7 +5,7 @@ use std::{
 
 use lazy_static::lazy_static;
 use tracing::instrument;
-use winbar::{color::Color, styles::Styles, WinbarAction};
+use winbar::{color::Color, styles::Styles, windows_api::WindowsApi, WinbarAction};
 use windows::{
     core::w,
     Win32::{
@@ -29,7 +29,7 @@ use windows::{
 };
 
 use crate::{
-    windows_api::WindowsApi, COMPONENT_MANAGER, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT,
+    COMPONENT_MANAGER, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT,
     DEFAULT_FONT_SIZE, HEIGHT, WIDTH,
 };
 
