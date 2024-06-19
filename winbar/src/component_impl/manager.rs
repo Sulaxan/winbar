@@ -3,9 +3,9 @@ use std::{
     thread::{self, JoinHandle},
 };
 
+use anyhow::{anyhow, Result};
 use getset::Getters;
 use serde::{Deserialize, Serialize};
-use tokio::task::LocalSet;
 use tracing::instrument;
 use winbar::{util::rect::Rect, Component, WinbarContext};
 use windows::Win32::{Foundation::HWND, Graphics::Gdi::HDC};
@@ -28,6 +28,14 @@ pub struct ComponentState {
     #[getset(get = "pub")]
     component: Arc<dyn Component + Send + Sync>,
     thread: JoinHandle<()>,
+}
+
+impl ComponentState {
+    pub fn stop(self) -> Result<()> {
+        self.thread
+            .join()
+            .map_err(|e| anyhow!("component thread join error: {:?}", e))
+    }
 }
 
 pub struct ComponentManager {

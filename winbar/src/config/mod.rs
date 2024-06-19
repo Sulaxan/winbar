@@ -269,12 +269,11 @@ impl ComponentData {
                         path.to_str().unwrap()
                     );
                 }
-                println!("AAA");
+
                 let plugin = manager.load(path.to_str().unwrap()).unwrap();
 
                 let component = PluginComponent::new(plugin, styles.clone().into());
                 component.load_config(other).unwrap();
-                println!("AAA");
 
                 Arc::new(component)
             }
