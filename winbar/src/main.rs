@@ -10,13 +10,16 @@ use std::{
 use anyhow::{anyhow, Context};
 use clap::Parser;
 use cli::WinbarCli;
-use component_impl::manager::ComponentManager;
+use component_impl::manager::{ComponentLocation, ComponentManager};
 use config::Config;
 use lazy_static::lazy_static;
 use tokio::runtime;
 use tracing::instrument;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
-use winbar::{color::Color, windows_api::WindowsApi, WinbarAction, WinbarContext, DEFAULT_HOSTNAME, DEFAULT_PORT};
+use winbar::{
+    color::Color, windows_api::WindowsApi, Component, WinbarAction, WinbarContext,
+    DEFAULT_HOSTNAME, DEFAULT_PORT,
+};
 use winbar_plugin::plugin::PluginManager;
 use windows::Win32::Foundation::BOOL;
 use windows::Win32::{
@@ -38,7 +41,7 @@ static SERVER_PORT: AtomicI32 = AtomicI32::new(DEFAULT_PORT);
 lazy_static! {
     static ref WINBAR_HWND: Arc<Mutex<HWND>> = Arc::new(Mutex::new(HWND(0)));
     static ref COMPONENT_MANAGER: Arc<Mutex<ComponentManager>> =
-        Arc::new(Mutex::new(ComponentManager::new()));
+        Arc::new(Mutex::new(ComponentManager::new(HWND(0))));
     static ref PLUGIN_MANAGER: Arc<Mutex<PluginManager>> =
         Arc::new(Mutex::new(PluginManager::new()));
 }
@@ -82,11 +85,11 @@ pub fn gen_config(path: &PathBuf) {
 }
 
 #[instrument]
-pub fn read_config() -> anyhow::Result<()> {
+pub fn read_config() -> anyhow::Result<Vec<(ComponentLocation, Arc<dyn Component + Send + Sync>)>> {
     let cli = WinbarCli::parse();
     if cli.generate_config {
         gen_config(&cli.config_path);
-        return Ok(());
+        return Ok(Vec::new());
     }
 
     let config = Config::read(&cli.config_path)?;
@@ -94,19 +97,13 @@ pub fn read_config() -> anyhow::Result<()> {
 
     SERVER_PORT.store(cli.port, Ordering::SeqCst);
 
-    tracing::info!("Adding components from config");
-    match COMPONENT_MANAGER.lock() {
-        Ok(mut manager) => {
-            config.components.iter().for_each(|data| {
-                manager.add(data.location, data.component.to_component());
-            });
-        }
-        Err(e) => {
-            tracing::error!("Error obtaining component manager lock: {}", e)
-        }
-    }
+    tracing::info!("Processing components from config");
 
-    Ok(())
+    Ok(config
+        .components
+        .iter()
+        .map(|c| (c.location, c.component.to_component()))
+        .collect())
 }
 
 fn main() -> anyhow::Result<()> {
@@ -117,7 +114,7 @@ fn main() -> anyhow::Result<()> {
         .init();
 
     tracing::info!("Reading config");
-    read_config()?;
+    let components = read_config()?;
 
     tracing::info!("Starting GDI+");
     let token = WindowsApi::startup_gdiplus()?;
@@ -145,25 +142,21 @@ fn main() -> anyhow::Result<()> {
         *hwnd = winbar_hwnd;
     }
 
+    {
+        let mut manager = COMPONENT_MANAGER.lock().unwrap();
+        *manager = ComponentManager::new(winbar_hwnd);
+    }
+
     let (send, recv) = mpsc::channel::<WinbarAction>();
     let winbar_ctx = WinbarContext::new(send);
 
-    tracing::info!("Starting component runner thread");
-    let cloned_ctx = winbar_ctx.clone();
-    thread::spawn(move || {
-        let rt = runtime::Runtime::new().unwrap();
-        match COMPONENT_MANAGER.lock() {
-            Ok(mut manager) => {
-                let set = manager.start(cloned_ctx, winbar_hwnd);
-                drop(manager);
-
-                rt.block_on(set);
-            }
-            Err(e) => {
-                tracing::error!("Error obtaining component manager lock {}", e);
-            }
-        }
-    });
+    tracing::info!("Starting components");
+    {
+        let mut manager = COMPONENT_MANAGER.lock().unwrap();
+        components.iter().for_each(|(loc, c)| {
+            manager.add(*loc, c.clone(), winbar_ctx.clone());
+        });
+    }
 
     tracing::info!("Starting server");
     thread::spawn(move || {
@@ -202,14 +195,8 @@ fn main() -> anyhow::Result<()> {
 pub extern "system" fn ctrl_handler(ctrltype: u32) -> BOOL {
     match ctrltype {
         CTRL_C_EVENT => {
-            match WINBAR_HWND.lock() {
-                Ok(hwnd) => {
-                    WindowsApi::send_window_shutdown_msg(*hwnd);
-                }
-                Err(e) => {
-                    tracing::error!("Error obtaining winbar hwnd lock: {}", e);
-                }
-            }
+            let hwnd = WINBAR_HWND.lock().unwrap();
+            WindowsApi::send_window_shutdown_msg(*hwnd);
 
             true.into()
         }

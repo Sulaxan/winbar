@@ -1,4 +1,7 @@
-use std::sync::{atomic::Ordering, Arc};
+use std::{
+    sync::{atomic::Ordering, Arc},
+    thread::{self, JoinHandle},
+};
 
 use getset::Getters;
 use serde::{Deserialize, Serialize};
@@ -24,22 +27,19 @@ pub struct ComponentState {
     location: Rect,
     #[getset(get = "pub")]
     component: Arc<dyn Component + Send + Sync>,
+    thread: JoinHandle<()>,
 }
 
 pub struct ComponentManager {
     components: Vec<ComponentState>,
-}
-
-impl Default for ComponentManager {
-    fn default() -> Self {
-        Self::new()
-    }
+    hwnd: HWND,
 }
 
 impl ComponentManager {
-    pub fn new() -> Self {
+    pub fn new(hwnd: HWND) -> Self {
         Self {
             components: Vec::new(),
+            hwnd,
         }
     }
 
@@ -58,31 +58,23 @@ impl ComponentManager {
         self.components.iter().for_each(f);
     }
 
-    pub fn start(&mut self, ctx: WinbarContext, hwnd: HWND) -> LocalSet {
-        let set = LocalSet::new();
-
-        for winbar_comp in self.components.iter_mut() {
-            let component = winbar_comp.component.clone();
-            let location = winbar_comp.location;
-            let cloned_ctx = ctx.clone();
-
-            set.spawn_local(async move {
-                component.start(cloned_ctx, hwnd, location).await;
-            });
-        }
-
-        set
-    }
-
+    /// Add a new component to be managed. The component will be started immediately.
     pub fn add(
         &mut self,
         location: ComponentLocation,
         component: Arc<dyn Component + Send + Sync>,
+        ctx: WinbarContext,
     ) {
+        let hwnd = self.hwnd;
+        let cloned_component = component.clone();
+
+        let handle = thread::spawn(move || cloned_component.start(ctx, hwnd));
+
         self.components.push(ComponentState {
             location_intention: location,
             location: Rect::default(),
             component,
+            thread: handle,
         })
     }
 

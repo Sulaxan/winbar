@@ -1,11 +1,17 @@
-use std::{collections::HashMap, ffi::CStr, sync::Arc};
+use std::{
+    collections::HashMap,
+    ffi::{CStr, CString},
+    sync::Arc,
+};
 
 use anyhow::{Context, Result};
 use getset::Getters;
 use libloading::Library;
 use windows::Win32::{Foundation::HWND, Graphics::Gdi::HDC};
 
-use crate::{ComponentId, FnDraw, FnId, FnStart, FnWidth, PRect};
+use crate::{
+    ComponentId, FnDraw, FnId, FnLoadConfig, FnStart, FnStop, FnWidth, LoadConfigResult, PRect,
+};
 
 pub struct Plugin {
     pub id: String,
@@ -29,7 +35,7 @@ impl Plugin {
             let func: libloading::Symbol<FnDraw> = self
                 .lib
                 .get(b"draw\0")
-                .with_context(|| "Could not find width function")?;
+                .with_context(|| "Could not find draw function")?;
 
             func(id, hwnd, rect, hdc);
         }
@@ -37,14 +43,42 @@ impl Plugin {
         Ok(())
     }
 
-    pub fn start(&self, id: ComponentId, hwnd: HWND, rect: PRect) -> Result<()> {
+    pub fn load_config(&self, id: ComponentId, config: &str) -> Result<LoadConfigResult> {
+        unsafe {
+            let func: libloading::Symbol<FnLoadConfig> = self
+                .lib
+                .get(b"load_config\0")
+                .with_context(|| "Could not find load_config function")?;
+
+            let c_str_config = CString::new(config).unwrap().into_raw();
+            let result = func(id, c_str_config);
+            drop(CString::from_raw(c_str_config));
+
+            Ok(result)
+        }
+    }
+
+    pub fn start(&self, id: ComponentId, hwnd: HWND) -> Result<()> {
         unsafe {
             let func: libloading::Symbol<FnStart> = self
                 .lib
                 .get(b"start\0")
-                .with_context(|| "Could not find width function")?;
+                .with_context(|| "Could not find start function")?;
 
-            func(id, hwnd, rect)
+            func(id, hwnd)
+        }
+
+        Ok(())
+    }
+
+    pub fn stop(&self, id: ComponentId) -> Result<()> {
+        unsafe {
+            let func: libloading::Symbol<FnStop> = self
+                .lib
+                .get(b"stop\0")
+                .with_context(|| "Could not find stop function")?;
+
+            func(id)
         }
 
         Ok(())

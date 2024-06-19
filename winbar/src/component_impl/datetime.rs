@@ -1,10 +1,12 @@
-use std::{sync::Arc, time::Duration};
+use std::{sync::Arc, thread, time::Duration};
 
 use async_trait::async_trait;
 use chrono::Local;
-use tokio::time::{self};
 use winbar::{
-    styles::{StyleOptions, Styles}, util::rect::Rect, windows_api::WindowsApi, Component, WinbarAction, WinbarContext
+    styles::{StyleOptions, Styles},
+    util::rect::Rect,
+    windows_api::WindowsApi,
+    Component, WinbarAction, WinbarContext,
 };
 use windows::Win32::{
     Foundation::{HWND, SIZE},
@@ -63,14 +65,12 @@ impl Component for DateTimeComponent {
         }
     }
 
-    async fn start(&self, ctx: WinbarContext, _hwnd: HWND, _rect: Rect) {
-        let mut interval = time::interval(Duration::from_millis(500));
+    fn start(&self, ctx: WinbarContext, _hwnd: HWND) {
         loop {
-            // first tick completes immediately
-            interval.tick().await;
             if let Err(e) = ctx.sender().send(WinbarAction::UpdateWindow) {
                 tracing::error!("Could not send update window action over channel: {}", e);
             }
+            thread::sleep(Duration::from_millis(500));
         }
     }
 }

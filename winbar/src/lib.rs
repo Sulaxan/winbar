@@ -47,5 +47,5 @@ pub trait Component {
     fn draw(&self, hwnd: HWND, rect: Rect, hdc: HDC);
 
     /// Start any logic related to the component (e.g., a task to UpdateDraw).
-    async fn start(&self, ctx: WinbarContext, hwnd: HWND, rect: Rect);
+    fn start(&self, ctx: WinbarContext, hwnd: HWND);
 }

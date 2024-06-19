@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs,
     path::PathBuf,
     sync::{atomic::Ordering, Arc},
@@ -229,9 +230,20 @@ pub struct ComponentConfig {
 
 #[derive(Serialize, Deserialize)]
 pub enum ComponentData {
-    StaticText { text: String, styles: StyleConfig },
-    DateTime { format: String, styles: StyleConfig },
-    Plugin { id: String, styles: StyleConfig },
+    StaticText {
+        text: String,
+        styles: StyleConfig,
+    },
+    DateTime {
+        format: String,
+        styles: StyleConfig,
+    },
+    Plugin {
+        id: String,
+        styles: StyleConfig,
+        #[serde(flatten)]
+        other: HashMap<String, serde_json::Value>,
+    },
 }
 
 impl ComponentData {
@@ -245,7 +257,7 @@ impl ComponentData {
                 format.to_string(),
                 styles.clone().into(),
             )),
-            Self::Plugin { id, styles } => {
+            Self::Plugin { id, styles, other } => {
                 let mut manager = PLUGIN_MANAGER.lock().unwrap();
                 let plugin_dir = PLUGIN_DIR.lock().unwrap();
                 let path = plugin_dir.join(format!("{}.dll", id));
@@ -257,9 +269,14 @@ impl ComponentData {
                         path.to_str().unwrap()
                     );
                 }
+                println!("AAA");
                 let plugin = manager.load(path.to_str().unwrap()).unwrap();
 
-                Arc::new(PluginComponent::new(plugin, styles.clone().into()))
+                let component = PluginComponent::new(plugin, styles.clone().into());
+                component.load_config(other).unwrap();
+                println!("AAA");
+
+                Arc::new(component)
             }
         }
     }

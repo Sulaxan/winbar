@@ -1,8 +1,13 @@
-use std::sync::{
-    atomic::{AtomicU32, Ordering},
-    Arc,
+use std::{
+    collections::HashMap,
+    ffi::CStr,
+    sync::{
+        atomic::{AtomicU32, Ordering},
+        Arc,
+    },
 };
 
+use anyhow::{bail, Result};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
 use winbar::{styles::StyleOptions, util::rect::Rect, Component, WinbarContext};
@@ -33,6 +38,22 @@ impl PluginComponent {
     }
 }
 
+impl PluginComponent {
+    pub fn load_config(&self, config: &HashMap<String, serde_json::Value>) -> Result<()> {
+        let config_res = self
+            .plugin
+            .load_config(self.component_id, &serde_json::to_string(config)?)?;
+        if !config_res.ok {
+            unsafe {
+                let msg = CStr::from_ptr(config_res.error_msg).to_str()?.to_string();
+                bail!(msg)
+            }
+        }
+
+        Ok(())
+    }
+}
+
 #[async_trait]
 impl Component for PluginComponent {
     fn styles(&self) -> Arc<StyleOptions> {
@@ -49,9 +70,7 @@ impl Component for PluginComponent {
             .unwrap()
     }
 
-    async fn start(&self, _ctx: WinbarContext, hwnd: HWND, rect: Rect) {
-        self.plugin
-            .start(self.component_id, hwnd, rect.into())
-            .unwrap();
+    fn start(&self, _ctx: WinbarContext, hwnd: HWND) {
+        self.plugin.start(self.component_id, hwnd).unwrap();
     }
 }
