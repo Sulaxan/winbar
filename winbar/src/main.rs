@@ -183,11 +183,15 @@ fn main() -> anyhow::Result<()> {
     });
 
     tracing::info!("Starting window listener");
+    // this is blocking; we handle process termination below and through messages received on the
+    // mspc channel
     container::listen(winbar_hwnd, recv);
 
+    // SHUTDOWN LOGIC
     tracing::info!("Shutting down GDI+");
     WindowsApi::shutdown_gdiplus(token);
 
+    tracing::info!("Shutting down winbar");
     Ok(())
 }
 

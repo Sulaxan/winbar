@@ -119,9 +119,15 @@ impl PluginManager {
     }
 
     /// Unloads a plugin. Note that this method does not unload the underlying dynamic library until
-    /// all references to the plugin have been dropped.
+    /// all references to the plugin/library have been dropped.
     pub fn unload(&mut self, plugin_id: &str) {
         self.plugins.remove(plugin_id);
+    }
+
+    /// Unloads all plugins. Note that this method does not unload the underlying dynamic libraries
+    /// until all references to the plugins/libraries have been dropped.
+    pub fn unload_all(&mut self) {
+        self.plugins.drain();
     }
 }
 
