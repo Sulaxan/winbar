@@ -9,7 +9,7 @@ use winbar::{color::Color, styles::Styles, windows_api::WindowsApi, WinbarAction
 use windows::{
     core::w,
     Win32::{
-        Foundation::{COLORREF, HWND, LPARAM, LRESULT, WPARAM},
+        Foundation::{COLORREF, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM},
         Graphics::Gdi::{
             BeginPaint, BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, CreateSolidBrush,
             DeleteDC, DeleteObject, EndPaint, GetDC, InvalidateRect, SelectObject, SetBkColor,
@@ -20,17 +20,18 @@ use windows::{
             Threading::{GetStartupInfoW, STARTUPINFOW},
         },
         UI::WindowsAndMessaging::{
-            CreateWindowExW, DefWindowProcW, DispatchMessageW, PeekMessageW, PostQuitMessage,
-            RegisterClassW, SetLayeredWindowAttributes, ShowWindow, TranslateMessage, LWA_COLORKEY,
-            MSG, PM_REMOVE, SW_SHOWNORMAL, WM_CLOSE, WM_DESTROY, WM_ERASEBKGND, WM_PAINT,
-            WNDCLASSW, WS_EX_LAYERED, WS_EX_TOOLWINDOW, WS_POPUP, WS_VISIBLE,
+            CreateWindowExW, DefWindowProcW, DispatchMessageW, LoadCursorW, PeekMessageW,
+            PostQuitMessage, RegisterClassW, SetLayeredWindowAttributes, ShowWindow,
+            TranslateMessage, IDC_ARROW, LWA_COLORKEY, MSG, PM_REMOVE, SW_SHOWNORMAL, WM_CLOSE,
+            WM_DESTROY, WM_ERASEBKGND, WM_NCMOUSEHOVER, WM_PAINT, WNDCLASSW, WS_EX_LAYERED,
+            WS_EX_TOOLWINDOW, WS_POPUP, WS_VISIBLE,
         },
     },
 };
 
 use crate::{
-    COMPONENT_MANAGER, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT,
-    DEFAULT_FONT_SIZE, HEIGHT, WIDTH,
+    COMPONENT_MANAGER, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT, DEFAULT_FONT_SIZE, HEIGHT,
+    WIDTH,
 };
 
 lazy_static! {
@@ -56,6 +57,7 @@ pub fn create_window(bg_color: Color) -> HWND {
             hInstance: h_inst.into(),
             lpszClassName: class_name,
             hbrBackground: CreateSolidBrush(COLORREF(bg_color.bgr())),
+            hCursor: LoadCursorW(HINSTANCE(0), IDC_ARROW).unwrap(),
             ..Default::default()
         };
 
@@ -248,6 +250,9 @@ pub extern "system" fn window_proc(
             }
             WM_DESTROY => {
                 PostQuitMessage(0);
+            }
+            WM_NCMOUSEHOVER => {
+                return LRESULT(1);
             }
             _ => return DefWindowProcW(hwnd, msg, wparam, lparam),
         }
