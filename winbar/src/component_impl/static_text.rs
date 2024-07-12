@@ -5,7 +5,7 @@ use winbar::{
     styles::{StyleOptions, Styles},
     util::rect::Rect,
     windows_api::WindowsApi,
-    Component, WinbarContext,
+    Component, WinbarContext, WindowEvent,
 };
 use windows::Win32::{
     Foundation::{HWND, SIZE},
@@ -78,4 +78,6 @@ impl Component for StaticTextComponent {
     }
 
     fn start(&self, _ctx: WinbarContext, _hwnd: HWND) {}
+
+    fn handle_event(&self, _event: WindowEvent) {}
 }

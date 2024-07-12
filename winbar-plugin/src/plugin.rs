@@ -10,7 +10,8 @@ use libloading::Library;
 use windows::Win32::{Foundation::HWND, Graphics::Gdi::HDC};
 
 use crate::{
-    ComponentId, FnDraw, FnId, FnLoadConfig, FnStart, FnStop, FnWidth, LoadConfigResult, PRect,
+    ComponentId, FnDraw, FnHandleEvent, FnId, FnLoadConfig, FnStart, FnStop, FnWidth,
+    LoadConfigResult, PRect, WindowEvent,
 };
 
 pub struct Plugin {
@@ -38,6 +39,19 @@ impl Plugin {
                 .with_context(|| "Could not find draw function")?;
 
             func(id, hwnd, rect, hdc);
+        }
+
+        Ok(())
+    }
+
+    pub fn handle_event(&self, event: WindowEvent) -> Result<()> {
+        unsafe {
+            let func: libloading::Symbol<FnHandleEvent> = self
+                .lib
+                .get(b"handle_event\0")
+                .with_context(|| "Could not find handle_event function")?;
+
+            func(event);
         }
 
         Ok(())

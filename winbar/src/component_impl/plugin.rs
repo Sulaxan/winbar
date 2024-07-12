@@ -10,7 +10,7 @@ use std::{
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
-use winbar::{styles::StyleOptions, util::rect::Rect, Component, WinbarContext};
+use winbar::{styles::StyleOptions, util::rect::Rect, Component, WinbarContext, WindowEvent};
 use winbar_plugin::{plugin::Plugin, ComponentId};
 use windows::Win32::{Foundation::HWND, Graphics::Gdi::HDC};
 
@@ -73,4 +73,6 @@ impl Component for PluginComponent {
     fn start(&self, _ctx: WinbarContext, hwnd: HWND) {
         self.plugin.start(self.component_id, hwnd).unwrap();
     }
+
+    fn handle_event(&self, _event: WindowEvent) {}
 }

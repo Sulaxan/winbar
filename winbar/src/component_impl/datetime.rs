@@ -6,7 +6,7 @@ use winbar::{
     styles::{StyleOptions, Styles},
     util::rect::Rect,
     windows_api::WindowsApi,
-    Component, WinbarAction, WinbarContext,
+    Component, WinbarAction, WinbarContext, WindowEvent,
 };
 use windows::Win32::{
     Foundation::{HWND, SIZE},
@@ -73,4 +73,6 @@ impl Component for DateTimeComponent {
             thread::sleep(Duration::from_millis(500));
         }
     }
+
+    fn handle_event(&self, _event: WindowEvent) {}
 }
