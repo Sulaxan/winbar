@@ -921,6 +921,23 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "winbar-core",
+ "winbar-plugin",
+ "windows",
+]
+
+[[package]]
+name = "winbar-core"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "getset",
+ "regex",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
  "winbar-plugin",
  "windows",
 ]
@@ -939,7 +956,7 @@ dependencies = [
 name = "winbar-plugin-test"
 version = "0.1.0"
 dependencies = [
- "winbar",
+ "winbar-core",
  "winbar-plugin",
  "windows",
 ]
@@ -951,7 +968,7 @@ dependencies = [
  "clap",
  "powershell_script",
  "tokio",
- "winbar",
+ "winbar-core",
 ]
 
 [[package]]

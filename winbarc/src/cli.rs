@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use winbar::{DEFAULT_HOSTNAME, DEFAULT_PORT};
+use winbar_core::{DEFAULT_HOSTNAME, DEFAULT_PORT};
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]

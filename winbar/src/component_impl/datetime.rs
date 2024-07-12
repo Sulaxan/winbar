@@ -2,7 +2,7 @@ use std::{sync::Arc, thread, time::Duration};
 
 use async_trait::async_trait;
 use chrono::Local;
-use winbar::{
+use winbar_core::{
     styles::{StyleOptions, Styles},
     util::rect::Rect,
     windows_api::WindowsApi,

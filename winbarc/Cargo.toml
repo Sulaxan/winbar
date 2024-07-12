@@ -1,14 +1,15 @@
 [package]
 name = "winbarc"
 version = "0.2.0"
-authors = { workspace = true }
-license = { workspace = true }
-edition = { workspace = true }
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-winbar = { path = "../winbar" }
+winbar-core = { path = "../winbar-core" }
 clap = { version = "4.5.4", features = ["cargo", "derive"] }
 tokio = { version = "1.37.0", features = ["rt-multi-thread", "sync", "macros"] }
 powershell_script = { version = "1.1.0", features = ["core"] }

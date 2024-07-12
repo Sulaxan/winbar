@@ -5,7 +5,7 @@ use std::{
 
 use lazy_static::lazy_static;
 use tracing::instrument;
-use winbar::{color::Color, styles::Styles, windows_api::WindowsApi, WinbarAction};
+use winbar_core::{color::Color, styles::Styles, windows_api::WindowsApi, WinbarAction};
 use windows::{
     core::w,
     Win32::{

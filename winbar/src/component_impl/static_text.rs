@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use winbar::{
+use winbar_core::{
     styles::{StyleOptions, Styles},
     util::rect::Rect,
     windows_api::WindowsApi,

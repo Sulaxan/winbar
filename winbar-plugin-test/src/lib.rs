@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 
-use winbar::{
+use winbar_core::{
     styles::{BorderStyle, Styles},
     util::rect::Rect,
     windows_api::WindowsApi,

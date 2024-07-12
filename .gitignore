@@ -1,3 +1,5 @@
+.vscode/
+
 # winbar local files
 winbar.local.json
 local_plugins/

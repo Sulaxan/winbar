@@ -9,7 +9,7 @@ use std::{
 use clap::Parser;
 use cli::WinbarSubcommand;
 use tokio::sync::mpsc;
-use winbar::{
+use winbar_core::{
     client::WinbarClient,
     protocol::{ClientMessage, ServerMessage, WinbarClientPayload, WinbarServerPayload},
 };

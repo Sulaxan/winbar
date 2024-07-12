@@ -7,7 +7,7 @@ use serde::{
     Deserialize, Deserializer, Serialize,
 };
 use thiserror::Error;
-use winbar::{color::Color, util::hex_parser};
+use winbar_core::{color::Color, util::hex_parser};
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub enum ColorConfig {

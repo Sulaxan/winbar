@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use winbar::DEFAULT_PORT;
+use winbar_core::DEFAULT_PORT;
 
 /// Windows 10/11 status bar
 #[derive(Parser, Debug, Clone)]

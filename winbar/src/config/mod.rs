@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
-use winbar::{
+use winbar_core::{
     styles::{BorderStyle, StyleOptions},
     Component,
 };

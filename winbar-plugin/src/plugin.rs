@@ -144,26 +144,3 @@ impl PluginManager {
         self.plugins.drain();
     }
 }
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_load() {
-        let mut manager = PluginManager::new();
-        manager
-            .load("C:\\Users\\Encast\\development\\winbar\\target\\debug\\winbar_plugin_test.dll")
-            .unwrap();
-
-        println!(
-            "{}",
-            manager
-                .plugins()
-                .get("test")
-                .unwrap()
-                .width(0, HWND(0), HDC(1))
-                .unwrap()
-        );
-    }
-}

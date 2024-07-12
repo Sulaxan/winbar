@@ -16,7 +16,7 @@ use lazy_static::lazy_static;
 use tokio::runtime;
 use tracing::instrument;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
-use winbar::{
+use winbar_core::{
     color::Color, windows_api::WindowsApi, Component, WinbarAction, WinbarContext,
     DEFAULT_HOSTNAME, DEFAULT_PORT,
 };

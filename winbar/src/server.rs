@@ -5,7 +5,7 @@ use tokio::{
     net::{TcpListener, TcpStream},
     task::JoinHandle,
 };
-use winbar::{
+use winbar_core::{
     protocol::{ServerMessage, WinbarClientPayload, WinbarServerPayload},
     WinbarAction, WinbarContext,
 };
@@ -60,7 +60,7 @@ impl WinbarServer {
                         Ok(_) => {
                             let client_payload = WinbarClientPayload {
                                 id: payload.id,
-                                message: winbar::protocol::ClientMessage::Success,
+                                message: winbar_core::protocol::ClientMessage::Success,
                             };
                             Self::serialize_and_send(&mut stream, &client_payload).await;
                         }
@@ -68,7 +68,7 @@ impl WinbarServer {
                             tracing::error!("Error while processing server payload: {}", e);
                             let client_payload = WinbarClientPayload {
                                 id: payload.id,
-                                message: winbar::protocol::ClientMessage::Error(e.to_string()),
+                                message: winbar_core::protocol::ClientMessage::Error(e.to_string()),
                             };
                             Self::serialize_and_send(&mut stream, &client_payload).await;
                         }

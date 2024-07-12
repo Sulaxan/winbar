@@ -7,7 +7,7 @@ use anyhow::{anyhow, Result};
 use getset::Getters;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
-use winbar::{util::rect::Rect, Component, WinbarContext};
+use winbar_core::{util::rect::Rect, Component, WinbarContext};
 use windows::Win32::{Foundation::HWND, Graphics::Gdi::HDC};
 
 use crate::{COMPONENT_GAP, HEIGHT, WIDTH};
