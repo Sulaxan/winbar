@@ -6,7 +6,7 @@ use winbar_core::{
     styles::{StyleOptions, Styles},
     util::rect::Rect,
     windows_api::WindowsApi,
-    Component, WinbarAction, WinbarContext, WindowEvent,
+    Component, EventResult, WinbarAction, WinbarContext, WindowEvent, IGNORED_EVENT_RESULT,
 };
 use windows::Win32::{
     Foundation::{HWND, SIZE},
@@ -74,5 +74,8 @@ impl Component for DateTimeComponent {
         }
     }
 
-    fn handle_event(&self, _event: WindowEvent) {}
+    fn handle_event(&self, event: WindowEvent) -> EventResult {
+        println!("{}", event.msg_code);
+        IGNORED_EVENT_RESULT
+    }
 }

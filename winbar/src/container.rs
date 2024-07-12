@@ -5,7 +5,9 @@ use std::{
 
 use lazy_static::lazy_static;
 use tracing::instrument;
-use winbar_core::{color::Color, styles::Styles, windows_api::WindowsApi, WinbarAction};
+use winbar_core::{
+    color::Color, styles::Styles, windows_api::WindowsApi, EventAction, WinbarAction, WindowEvent,
+};
 use windows::{
     core::w,
     Win32::{
@@ -22,9 +24,11 @@ use windows::{
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, DispatchMessageW, LoadCursorW, PeekMessageW,
             PostQuitMessage, RegisterClassW, SetLayeredWindowAttributes, ShowWindow,
-            TranslateMessage, IDC_ARROW, LWA_COLORKEY, MSG, PM_REMOVE, SW_SHOWNORMAL, WM_CLOSE,
-            WM_DESTROY, WM_ERASEBKGND, WM_NCMOUSEHOVER, WM_PAINT, WNDCLASSW, WS_EX_LAYERED,
-            WS_EX_TOOLWINDOW, WS_POPUP, WS_VISIBLE,
+            TranslateMessage, IDC_ARROW, LWA_COLORKEY, MSG, PM_REMOVE, SW_SHOWNORMAL, WM_ACTIVATE,
+            WM_ACTIVATEAPP, WM_CLOSE, WM_DESTROY, WM_ERASEBKGND, WM_IME_SETCONTEXT, WM_MOVE,
+            WM_NCACTIVATE, WM_NCCALCSIZE, WM_NCCREATE, WM_NCLBUTTONDOWN, WM_NCLBUTTONUP,
+            WM_NCMOUSEHOVER, WM_NOTIFY, WM_PAINT, WM_SETFOCUS, WM_SHOWWINDOW, WM_WINDOWPOSCHANGED,
+            WM_WINDOWPOSCHANGING, WNDCLASSW, WS_EX_LAYERED, WS_EX_TOOLWINDOW, WS_POPUP, WS_VISIBLE,
         },
     },
 };
@@ -254,7 +258,39 @@ pub extern "system" fn window_proc(
             WM_NCMOUSEHOVER => {
                 return LRESULT(1);
             }
-            _ => return DefWindowProcW(hwnd, msg, wparam, lparam),
+            WM_NCCREATE | WM_NCCALCSIZE | WM_NCLBUTTONDOWN | WM_NCLBUTTONUP | WM_MOVE
+            | WM_SHOWWINDOW | WM_WINDOWPOSCHANGING | WM_ACTIVATEAPP | WM_NCACTIVATE
+            | WM_ACTIVATE | WM_IME_SETCONTEXT | WM_NOTIFY | WM_SETFOCUS | WM_WINDOWPOSCHANGED
+            | WM_CLOSE => {
+                return DefWindowProcW(hwnd, msg, wparam, lparam);
+            }
+            _ => {
+                let manager = COMPONENT_MANAGER.lock().unwrap();
+
+                let mut last_result = None;
+
+                for component in manager.iter() {
+                    let result = component.component().handle_event(WindowEvent {
+                        msg_code: msg,
+                        hwnd,
+                        wparam,
+                        lparam,
+                        component_location: *component.location(),
+                    });
+
+                    match result.action {
+                        EventAction::Handled => last_result = Some(result.result),
+                        EventAction::Intercept => return LRESULT(result.result),
+                        _ => {}
+                    }
+
+                    if let Some(result) = last_result {
+                        return LRESULT(result);
+                    }
+                }
+
+                return DefWindowProcW(hwnd, msg, wparam, lparam);
+            }
         }
     }
     LRESULT(0)

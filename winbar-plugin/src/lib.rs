@@ -45,8 +45,8 @@ pub enum EventAction {
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct EventResult {
-    action: EventAction,
-    result: isize,
+    pub action: EventAction,
+    pub result: isize,
 }
 
 /// A function returning the id of the plugin.
@@ -59,12 +59,12 @@ pub type FnDraw = unsafe extern "C" fn(ComponentId, HWND, PRect, HDC);
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct WindowEvent {
-    id: ComponentId,
-    msg_code: u32,
-    hwnd: HWND,
-    wparam: WPARAM,
-    lparam: LPARAM,
-    component_location: PRect,
+    pub id: ComponentId,
+    pub msg_code: u32,
+    pub hwnd: HWND,
+    pub wparam: WPARAM,
+    pub lparam: LPARAM,
+    pub component_location: PRect,
 }
 
 /// A function that handles events received by the window.

@@ -1,4 +1,5 @@
 use std::{
+    slice::Iter,
     sync::{atomic::Ordering, Arc},
     thread::{self, JoinHandle},
 };
@@ -64,6 +65,10 @@ impl ComponentManager {
         F: Fn(&ComponentState),
     {
         self.components.iter().for_each(f);
+    }
+
+    pub fn iter(&self) -> Iter<ComponentState> {
+        self.components.iter()
     }
 
     /// Add a new component to be managed. The component will be started immediately.

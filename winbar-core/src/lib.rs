@@ -18,6 +18,10 @@ pub mod windows_api;
 
 pub const DEFAULT_PORT: i32 = 10989;
 pub const DEFAULT_HOSTNAME: &str = "localhost";
+pub const IGNORED_EVENT_RESULT: EventResult = EventResult {
+    action: EventAction::Ignored,
+    result: 0,
+};
 
 pub enum WinbarAction {
     Shutdown,
@@ -38,17 +42,36 @@ impl WinbarContext {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum EventAction {
     Ignored,
     Handled,
     Intercept,
 }
 
+impl From<winbar_plugin::EventAction> for EventAction {
+    fn from(value: winbar_plugin::EventAction) -> Self {
+        match value {
+            winbar_plugin::EventAction::Ignored => Self::Ignored,
+            winbar_plugin::EventAction::Handled => Self::Handled,
+            winbar_plugin::EventAction::Intercept => Self::Intercept,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct EventResult {
     pub action: EventAction,
     pub result: isize,
+}
+
+impl From<winbar_plugin::EventResult> for EventResult {
+    fn from(value: winbar_plugin::EventResult) -> Self {
+        Self {
+            action: value.action.into(),
+            result: value.result,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -81,5 +104,5 @@ pub trait Component {
     ///
     /// Note that the internal window process function proxies most of the events it receives to
     /// this function.
-    fn handle_event(&self, event: WindowEvent);
+    fn handle_event(&self, event: WindowEvent) -> EventResult;
 }

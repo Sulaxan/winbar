@@ -2,10 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use winbar_core::{
-    styles::{StyleOptions, Styles},
-    util::rect::Rect,
-    windows_api::WindowsApi,
-    Component, WinbarContext, WindowEvent,
+    styles::{StyleOptions, Styles}, util::rect::Rect, windows_api::WindowsApi, Component, EventResult, WinbarContext, WindowEvent, IGNORED_EVENT_RESULT
 };
 use windows::Win32::{
     Foundation::{HWND, SIZE},
@@ -79,5 +76,7 @@ impl Component for StaticTextComponent {
 
     fn start(&self, _ctx: WinbarContext, _hwnd: HWND) {}
 
-    fn handle_event(&self, _event: WindowEvent) {}
+    fn handle_event(&self, _event: WindowEvent) -> EventResult {
+        IGNORED_EVENT_RESULT
+    }
 }
