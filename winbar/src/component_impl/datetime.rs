@@ -74,8 +74,7 @@ impl Component for DateTimeComponent {
         }
     }
 
-    fn handle_event(&self, event: WindowEvent) -> EventResult {
-        println!("{}", event.msg_code);
+    fn handle_event(&self, _event: WindowEvent) -> EventResult {
         IGNORED_EVENT_RESULT
     }
 }

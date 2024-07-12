@@ -49,6 +49,11 @@ pub struct EventResult {
     pub result: isize,
 }
 
+pub const IGNORED_EVENT_RESULT: EventResult = EventResult {
+    action: EventAction::Ignored,
+    result: 0,
+};
+
 /// A function returning the id of the plugin.
 pub type FnId = unsafe extern "C" fn() -> *const c_char;
 /// A function returning the width of the component.

@@ -14,8 +14,4 @@ crate-type = ["cdylib"]
 [dependencies]
 winbar-core = { path = "../winbar-core" }
 winbar-plugin = { path = "../winbar-plugin" }
-windows = { version = "0.54.0", features = [
-    "Win32_UI_WindowsAndMessaging",
-    "Win32_Foundation",
-    "Win32_Graphics_Gdi",
-] }
+windows = { version = "0.54.0", features = ["Win32_UI_WindowsAndMessaging", "Win32_Foundation", "Win32_Graphics_Gdi", "Win32_UI_Controls", "Win32_UI_Input_KeyboardAndMouse"] }

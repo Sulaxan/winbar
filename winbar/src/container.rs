@@ -255,9 +255,9 @@ pub extern "system" fn window_proc(
             WM_DESTROY => {
                 PostQuitMessage(0);
             }
-            WM_NCMOUSEHOVER => {
-                return LRESULT(1);
-            }
+            // WM_NCMOUSEHOVER => {
+            //     return LRESULT(1);
+            // }
             WM_NCCREATE | WM_NCCALCSIZE | WM_NCLBUTTONDOWN | WM_NCLBUTTONUP | WM_MOVE
             | WM_SHOWWINDOW | WM_WINDOWPOSCHANGING | WM_ACTIVATEAPP | WM_NCACTIVATE
             | WM_ACTIVATE | WM_IME_SETCONTEXT | WM_NOTIFY | WM_SETFOCUS | WM_WINDOWPOSCHANGED
