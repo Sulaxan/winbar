@@ -85,24 +85,8 @@ pub struct WindowEvent {
 
 #[async_trait]
 pub trait Component {
-    fn styles(&self) -> Arc<StyleOptions>;
-
-    /// The width of the component.
-    fn width(&self, hwnd: HWND, hdc: HDC) -> i32;
-
-    /// Draw the component. Note this this method is responsible for cleanup of any objects it
-    /// creates.
-    fn draw(&self, hwnd: HWND, rect: Rect, hdc: HDC);
+    fn create_window(&self) -> HWND;
 
     /// Start any logic related to the component (e.g., a task to UpdateDraw).
     fn start(&self, ctx: WinbarContext, hwnd: HWND);
-
-    /// Handle a window event.
-    ///
-    /// The following resource is useful to look at when implementing this function.
-    /// https://learn.microsoft.com/en-us/windows/win32/learnwin32/writing-the-window-procedure
-    ///
-    /// Note that the internal window process function proxies most of the events it receives to
-    /// this function.
-    fn handle_event(&self, event: WindowEvent) -> EventResult;
 }

@@ -41,7 +41,7 @@ static SERVER_PORT: AtomicI32 = AtomicI32::new(DEFAULT_PORT);
 lazy_static! {
     static ref WINBAR_HWND: Arc<Mutex<HWND>> = Arc::new(Mutex::new(HWND(0)));
     static ref COMPONENT_MANAGER: Arc<Mutex<ComponentManager>> =
-        Arc::new(Mutex::new(ComponentManager::new(HWND(0))));
+        Arc::new(Mutex::new(ComponentManager::new()));
     static ref PLUGIN_MANAGER: Arc<Mutex<PluginManager>> =
         Arc::new(Mutex::new(PluginManager::new()));
 }
@@ -140,11 +140,6 @@ fn main() -> anyhow::Result<()> {
             .lock()
             .map_err(|e| anyhow!("Could not obtain winbar hwnd lock: {}", e))?;
         *hwnd = winbar_hwnd;
-    }
-
-    {
-        let mut manager = COMPONENT_MANAGER.lock().unwrap();
-        *manager = ComponentManager::new(winbar_hwnd);
     }
 
     let (send, recv) = mpsc::channel::<WinbarAction>();

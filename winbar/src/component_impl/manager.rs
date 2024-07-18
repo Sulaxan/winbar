@@ -9,7 +9,10 @@ use getset::Getters;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use winbar_core::{util::rect::Rect, Component, WinbarContext};
-use windows::Win32::{Foundation::HWND, Graphics::Gdi::HDC};
+use windows::Win32::{
+    Foundation::{HWND, RECT},
+    UI::WindowsAndMessaging::{GetWindowRect, SetWindowPos, HWND_BOTTOM, SWP_NOSIZE},
+};
 
 use crate::{COMPONENT_GAP, HEIGHT, WIDTH};
 
@@ -28,6 +31,7 @@ pub struct ComponentState {
     location: Rect,
     #[getset(get = "pub")]
     component: Arc<dyn Component + Send + Sync>,
+    window: HWND,
     thread: JoinHandle<()>,
 }
 
@@ -41,23 +45,13 @@ impl ComponentState {
 
 pub struct ComponentManager {
     components: Vec<ComponentState>,
-    hwnd: HWND,
 }
 
 impl ComponentManager {
-    pub fn new(hwnd: HWND) -> Self {
+    pub fn new() -> Self {
         Self {
             components: Vec::new(),
-            hwnd,
         }
-    }
-
-    #[instrument(level = "trace", skip(self))]
-    pub fn draw_all(&self, hwnd: HWND, hdc: HDC) {
-        tracing::debug!("Drawing {} components", self.components.len());
-        self.components
-            .iter()
-            .for_each(|state| state.component.draw(hwnd, state.location, hdc))
     }
 
     pub fn for_each<F>(&self, f: F)
@@ -76,35 +70,56 @@ impl ComponentManager {
         &mut self,
         location: ComponentLocation,
         component: Arc<dyn Component + Send + Sync>,
+        window: HWND,
         ctx: WinbarContext,
     ) {
-        let hwnd = self.hwnd;
         let cloned_component = component.clone();
 
-        let handle = thread::spawn(move || cloned_component.start(ctx, hwnd));
+        let handle = thread::spawn(move || cloned_component.start(ctx, window));
 
         self.components.push(ComponentState {
             location_intention: location,
             location: Rect::default(),
             component,
+            window,
             thread: handle,
         })
     }
 
+    pub fn update_component_locations(&mut self) {
+        self.compute_locations();
+        self.components.iter().for_each(|c| unsafe {
+            SetWindowPos(
+                c.window,
+                HWND_BOTTOM,
+                c.location.x,
+                c.location.y,
+                0,
+                0,
+                SWP_NOSIZE,
+            );
+        })
+    }
+
     #[instrument(level = "trace", skip(self))]
-    pub fn compute_locations(&mut self, hwnd: HWND, hdc: HDC) {
+    pub fn compute_locations(&mut self) {
         let width = WIDTH.load(Ordering::SeqCst);
         let height = HEIGHT.load(Ordering::SeqCst);
         let gap = COMPONENT_GAP.load(Ordering::SeqCst);
 
         let mut curr_loc_x = 0;
+        let mut rect = RECT::default();
 
         // left
         self.components
             .iter_mut()
             .filter(|state| state.location_intention == ComponentLocation::LEFT)
             .for_each(|state| {
-                let component_width = state.component.width(hwnd, hdc);
+                unsafe {
+                    GetWindowRect(state.window, &mut rect).unwrap();
+                }
+                let component_width = rect.right - rect.left;
+
                 state.location = Rect {
                     x: curr_loc_x,
                     y: 0,
@@ -120,7 +135,11 @@ impl ComponentManager {
             .iter_mut()
             .filter(|state| state.location_intention == ComponentLocation::RIGHT)
             .for_each(|state| {
-                let component_width = state.component.width(hwnd, hdc);
+                unsafe {
+                    GetWindowRect(state.window, &mut rect).unwrap();
+                }
+                let component_width = rect.right - rect.left;
+
                 state.location = Rect {
                     x: curr_loc_x - component_width,
                     y: 0,
@@ -139,7 +158,13 @@ impl ComponentManager {
             .filter_map(|state| {
                 if state.location_intention == ComponentLocation::MIDDLE {
                     total_components += 1;
-                    Some(state.component.width(hwnd, hdc))
+
+                    unsafe {
+                        GetWindowRect(state.window, &mut rect).unwrap();
+                    }
+
+                    let component_width = rect.right - rect.left;
+                    Some(component_width)
                 } else {
                     None
                 }
@@ -157,7 +182,11 @@ impl ComponentManager {
             .iter_mut()
             .filter(|c| c.location_intention == ComponentLocation::MIDDLE)
             .for_each(|state| {
-                let component_width = state.component.width(hwnd, hdc);
+                unsafe {
+                    GetWindowRect(state.window, &mut rect).unwrap();
+                }
+                let component_width = rect.right - rect.left;
+
                 state.location = Rect {
                     x: curr_loc_x,
                     y: 0,

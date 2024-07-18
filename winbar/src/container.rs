@@ -157,60 +157,6 @@ pub fn paint(hwnd: HWND, hdc: HDC) {
             return;
         }
     };
-
-    // FIXME: not ideal computing locations every time... optimize in the future
-    manager.compute_locations(hwnd, hdc);
-
-    manager.for_each(|state| {
-        let styles = state.component().styles();
-
-        // set styles
-        let font = match &styles.font {
-            Some(font) => font.to_string(),
-            None => {
-                let font = DEFAULT_FONT.lock().unwrap();
-                font.to_string()
-            }
-        };
-        let font_size = match &styles.font_size {
-            Some(size) => *size,
-            None => DEFAULT_FONT_SIZE.load(Ordering::SeqCst),
-        };
-        let bg_color = match &styles.bg_color {
-            Some(color) => color.bgr(),
-            None => {
-                let color = DEFAULT_BG_COLOR.lock().unwrap();
-                color.bgr()
-            }
-        };
-        let fg_color = match &styles.fg_color {
-            Some(color) => color.bgr(),
-            None => {
-                let color = DEFAULT_FG_COLOR.lock().unwrap();
-                color.bgr()
-            }
-        };
-
-        let pen = Styles::pen(bg_color, PS_SOLID);
-        let brush = Styles::solid_brush(bg_color);
-        let font = Styles::font(font_size, &font);
-
-        unsafe {
-            SelectObject(hdc, pen);
-            SelectObject(hdc, brush);
-            SelectObject(hdc, font);
-            SetBkColor(hdc, COLORREF(bg_color));
-            SetTextColor(hdc, COLORREF(fg_color));
-        }
-
-        state.component().draw(hwnd, *state.location(), hdc);
-
-        unsafe {
-            DeleteObject(pen);
-            DeleteObject(brush);
-            DeleteObject(font);
-        }
-    });
 }
 
 #[instrument(level = "trace", name = "window_process_function")]
@@ -220,78 +166,78 @@ pub extern "system" fn window_proc(
     wparam: WPARAM,
     lparam: LPARAM,
 ) -> LRESULT {
-    unsafe {
-        match msg {
-            WM_PAINT => {
-                tracing::trace!("Starting painting...");
-                let mut ps = PAINTSTRUCT::default();
-                let hdc = BeginPaint(hwnd, &mut ps);
+    // unsafe {
+    //     match msg {
+    //         WM_PAINT => {
+    //             tracing::trace!("Starting painting...");
+    //             let mut ps = PAINTSTRUCT::default();
+    //             let hdc = BeginPaint(hwnd, &mut ps);
 
-                // double buffered window
-                let buffers = WINDOW_BUFFERS.read().unwrap();
-                if let Some(buffer) = buffers.get(&hwnd.0) {
-                    let hdc_buffer = CreateCompatibleDC(hdc);
-                    let old_hdc = SelectObject(hdc_buffer, *buffer);
-                    let width = WIDTH.load(Ordering::SeqCst);
-                    let height = HEIGHT.load(Ordering::SeqCst);
+    //             // double buffered window
+    //             let buffers = WINDOW_BUFFERS.read().unwrap();
+    //             if let Some(buffer) = buffers.get(&hwnd.0) {
+    //                 let hdc_buffer = CreateCompatibleDC(hdc);
+    //                 let old_hdc = SelectObject(hdc_buffer, *buffer);
+    //                 let width = WIDTH.load(Ordering::SeqCst);
+    //                 let height = HEIGHT.load(Ordering::SeqCst);
 
-                    paint(hwnd, hdc_buffer);
+    //                 paint(hwnd, hdc_buffer);
 
-                    BitBlt(hdc, 0, 0, width, height, hdc_buffer, 0, 0, SRCCOPY).unwrap();
+    //                 BitBlt(hdc, 0, 0, width, height, hdc_buffer, 0, 0, SRCCOPY).unwrap();
 
-                    SelectObject(hdc_buffer, old_hdc);
+    //                 SelectObject(hdc_buffer, old_hdc);
 
-                    DeleteDC(hdc_buffer);
-                } else {
-                    paint(hwnd, hdc);
-                }
+    //                 DeleteDC(hdc_buffer);
+    //             } else {
+    //                 paint(hwnd, hdc);
+    //             }
 
-                EndPaint(hwnd, &ps);
-                tracing::trace!("Finished painting");
-            }
-            WM_ERASEBKGND => {
-                return LRESULT(1);
-            }
-            WM_DESTROY => {
-                PostQuitMessage(0);
-            }
-            // WM_NCMOUSEHOVER => {
-            //     return LRESULT(1);
-            // }
-            WM_NCCREATE | WM_NCCALCSIZE | WM_NCLBUTTONDOWN | WM_NCLBUTTONUP | WM_MOVE
-            | WM_SHOWWINDOW | WM_WINDOWPOSCHANGING | WM_ACTIVATEAPP | WM_NCACTIVATE
-            | WM_ACTIVATE | WM_IME_SETCONTEXT | WM_NOTIFY | WM_SETFOCUS | WM_WINDOWPOSCHANGED
-            | WM_CLOSE => {
-                return DefWindowProcW(hwnd, msg, wparam, lparam);
-            }
-            _ => {
-                let manager = COMPONENT_MANAGER.lock().unwrap();
+    //             EndPaint(hwnd, &ps);
+    //             tracing::trace!("Finished painting");
+    //         }
+    //         WM_ERASEBKGND => {
+    //             return LRESULT(1);
+    //         }
+    //         WM_DESTROY => {
+    //             PostQuitMessage(0);
+    //         }
+    //         // WM_NCMOUSEHOVER => {
+    //         //     return LRESULT(1);
+    //         // }
+    //         WM_NCCREATE | WM_NCCALCSIZE | WM_NCLBUTTONDOWN | WM_NCLBUTTONUP | WM_MOVE
+    //         | WM_SHOWWINDOW | WM_WINDOWPOSCHANGING | WM_ACTIVATEAPP | WM_NCACTIVATE
+    //         | WM_ACTIVATE | WM_IME_SETCONTEXT | WM_NOTIFY | WM_SETFOCUS | WM_WINDOWPOSCHANGED
+    //         | WM_CLOSE => {
+    //             return DefWindowProcW(hwnd, msg, wparam, lparam);
+    //         }
+    //         _ => {
+    //             let manager = COMPONENT_MANAGER.lock().unwrap();
 
-                let mut last_result = None;
+    //             let mut last_result = None;
 
-                for component in manager.iter() {
-                    let result = component.component().handle_event(WindowEvent {
-                        msg_code: msg,
-                        hwnd,
-                        wparam,
-                        lparam,
-                        component_location: *component.location(),
-                    });
+    //             for component in manager.iter() {
+    //                 let result = component.component().handle_event(WindowEvent {
+    //                     msg_code: msg,
+    //                     hwnd,
+    //                     wparam,
+    //                     lparam,
+    //                     component_location: *component.location(),
+    //                 });
 
-                    match result.action {
-                        EventAction::Handled => last_result = Some(result.result),
-                        EventAction::Intercept => return LRESULT(result.result),
-                        _ => {}
-                    }
+    //                 match result.action {
+    //                     EventAction::Handled => last_result = Some(result.result),
+    //                     EventAction::Intercept => return LRESULT(result.result),
+    //                     _ => {}
+    //                 }
 
-                    if let Some(result) = last_result {
-                        return LRESULT(result);
-                    }
-                }
+    //                 if let Some(result) = last_result {
+    //                     return LRESULT(result);
+    //                 }
+    //             }
 
-                return DefWindowProcW(hwnd, msg, wparam, lparam);
-            }
-        }
-    }
+    //             return DefWindowProcW(hwnd, msg, wparam, lparam);
+    //         }
+    //     }
+    // }
     LRESULT(0)
 }
