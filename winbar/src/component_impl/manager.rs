@@ -14,13 +14,23 @@ use windows::Win32::{
     UI::WindowsAndMessaging::{GetWindowRect, SetWindowPos, HWND_BOTTOM, SWP_NOSIZE},
 };
 
-use crate::{COMPONENT_GAP, HEIGHT, WIDTH};
+use crate::status_bar;
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ComponentLocation {
-    LEFT,
-    MIDDLE,
-    RIGHT,
+    Left,
+    Middle,
+    Right,
+}
+
+impl From<ComponentLocation> for status_bar::ComponentLocation {
+    fn from(value: ComponentLocation) -> Self {
+        match value {
+            ComponentLocation::Left => Self::Left,
+            ComponentLocation::Middle => Self::Middle,
+            ComponentLocation::Right => Self::Right,
+        }
+    }
 }
 
 #[derive(Getters)]
@@ -113,7 +123,7 @@ impl ComponentManager {
         // left
         self.components
             .iter_mut()
-            .filter(|state| state.location_intention == ComponentLocation::LEFT)
+            .filter(|state| state.location_intention == ComponentLocation::Left)
             .for_each(|state| {
                 unsafe {
                     GetWindowRect(state.window, &mut rect).unwrap();
@@ -133,7 +143,7 @@ impl ComponentManager {
         curr_loc_x = width;
         self.components
             .iter_mut()
-            .filter(|state| state.location_intention == ComponentLocation::RIGHT)
+            .filter(|state| state.location_intention == ComponentLocation::Right)
             .for_each(|state| {
                 unsafe {
                     GetWindowRect(state.window, &mut rect).unwrap();
@@ -156,7 +166,7 @@ impl ComponentManager {
             .components
             .iter_mut()
             .filter_map(|state| {
-                if state.location_intention == ComponentLocation::MIDDLE {
+                if state.location_intention == ComponentLocation::Middle {
                     total_components += 1;
 
                     unsafe {
@@ -180,7 +190,7 @@ impl ComponentManager {
         curr_loc_x = width / 2 - (total_width + (gap - 1) * total_components) / 2;
         self.components
             .iter_mut()
-            .filter(|c| c.location_intention == ComponentLocation::MIDDLE)
+            .filter(|c| c.location_intention == ComponentLocation::Middle)
             .for_each(|state| {
                 unsafe {
                     GetWindowRect(state.window, &mut rect).unwrap();

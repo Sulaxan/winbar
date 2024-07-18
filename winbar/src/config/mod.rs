@@ -1,9 +1,4 @@
-use std::{
-    collections::HashMap,
-    fs,
-    path::PathBuf,
-    sync::{atomic::Ordering, Arc},
-};
+use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 
 use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
@@ -14,11 +9,9 @@ use winbar_core::{
 
 use crate::{
     component_impl::{
-        datetime::DateTimeComponent, manager::ComponentLocation, plugin::PluginComponent,
-        static_text::StaticTextComponent,
+        datetime::DateTimeComponent, plugin::PluginComponent, static_text::StaticTextComponent,
     },
-    COMPONENT_GAP, DEFAULT_BG_COLOR, DEFAULT_FG_COLOR, DEFAULT_FONT, DEFAULT_FONT_SIZE, HEIGHT,
-    PLUGIN_DIR, PLUGIN_MANAGER, POSITION_X, POSITION_Y, STATUS_BAR_BG_COLOR, WIDTH,
+    status_bar, PLUGIN_DIR, PLUGIN_MANAGER,
 };
 
 use self::color::ColorConfig;
@@ -34,17 +27,19 @@ fn default_font_size() -> i32 {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Config {
-    /// The width of the window
-    pub window_width: i32,
-    /// The height of the window
-    pub window_height: i32,
-    /// The x position of the window
+pub struct StatusBarConfig {
+    /// The x position of the status bar
     #[serde(default)]
-    pub position_x: i32,
-    /// The y position of the window
+    pub x: i32,
+    /// The y position of the status bar
     #[serde(default)]
-    pub position_y: i32,
+    pub y: i32,
+    /// The width of the status bar
+    pub width: i32,
+    /// The height of the status bar
+    pub height: i32,
+    /// The layout id to apply to this status bar (as defined in `layouts`)
+    pub layout_id: String,
     /// The gap, in pixels, between components
     #[serde(default = "default_component_gap")]
     pub component_gap: i32,
@@ -62,10 +57,16 @@ pub struct Config {
     /// The default font size of components
     #[serde(default = "default_font_size")]
     pub default_font_size: i32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Config {
+    /// Status bar defintions
+    pub status_bars: Vec<StatusBarConfig>,
     /// The path of the plugin directory
     pub plugin_dir: PathBuf,
-    /// All components that should be displayed in the status bar
-    pub components: Vec<ComponentConfig>,
+    /// Component layout definitions
+    pub layouts: Vec<ComponentLayout>,
 }
 
 impl Config {
@@ -79,36 +80,6 @@ impl Config {
     }
 
     pub fn set_global_constants(&self) -> Result<()> {
-        WIDTH.store(self.window_width, Ordering::SeqCst);
-        HEIGHT.store(self.window_height, Ordering::SeqCst);
-        POSITION_X.store(self.position_x, Ordering::SeqCst);
-        POSITION_Y.store(self.position_y, Ordering::SeqCst);
-        COMPONENT_GAP.store(self.component_gap, Ordering::SeqCst);
-        DEFAULT_FONT_SIZE.store(self.default_font_size, Ordering::SeqCst);
-        {
-            let mut status_bar_bg_color = STATUS_BAR_BG_COLOR
-                .lock()
-                .map_err(|e| anyhow!("Could not obtain status bar background color lock: {}", e))?;
-            *status_bar_bg_color = self.status_bar_bg_color.clone().into();
-        }
-        {
-            let mut bg_color = DEFAULT_BG_COLOR
-                .lock()
-                .map_err(|e| anyhow!("Could not obtain default background color lock: {}", e))?;
-            *bg_color = self.default_component_bg_color.clone().into();
-        }
-        {
-            let mut fg_color = DEFAULT_FG_COLOR
-                .lock()
-                .map_err(|e| anyhow!("Could not obtain default foreground color lock: {}", e))?;
-            *fg_color = self.default_component_fg_color.clone().into();
-        }
-        {
-            let mut font = DEFAULT_FONT
-                .lock()
-                .map_err(|e| anyhow!("Could not obtain default foreground color lock: {}", e))?;
-            *font = self.default_font.to_string();
-        }
         {
             if !self.plugin_dir.is_dir() {
                 bail!(
@@ -119,9 +90,7 @@ impl Config {
                 );
             }
 
-            let mut plugin_dir = PLUGIN_DIR
-                .lock()
-                .map_err(|e| anyhow!("Could not obtain plugin directory lock: {}", e))?;
+            let mut plugin_dir = PLUGIN_DIR.lock().unwrap();
             *plugin_dir = self.plugin_dir.clone();
         }
 
@@ -132,47 +101,31 @@ impl Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            window_width: 1080,
-            window_height: 20,
-            position_x: 0,
-            position_y: 0,
-            component_gap: 10,
-            status_bar_bg_color: ColorConfig::Transparent,
-            default_component_bg_color: ColorConfig::Rgb {
-                r: 23,
-                g: 23,
-                b: 23,
-            },
-            default_component_fg_color: ColorConfig::Rgb {
-                r: 33,
-                g: 181,
-                b: 80,
-            },
-            default_font: "Segoe IO Variable".to_string(),
-            default_font_size: 18,
+            status_bars: Vec::new(),
             plugin_dir: PathBuf::new(),
-            components: vec![
-                ComponentConfig {
-                    location: ComponentLocation::LEFT,
-                    component: ComponentData::StaticText {
-                        text: "Winbar!".to_string(),
-                        styles: StyleConfig {
-                            padding_x: 10,
-                            ..Default::default()
-                        },
-                    },
-                },
-                ComponentConfig {
-                    location: ComponentLocation::LEFT,
-                    component: ComponentData::DateTime {
-                        format: "%F %r".to_string(),
-                        styles: StyleConfig {
-                            padding_x: 10,
-                            ..Default::default()
-                        },
-                    },
-                },
-            ],
+            // layouts: vec![
+            //     ComponentLayout {
+            //         location: ComponentLocation::LEFT,
+            //         component: ComponentType::StaticText {
+            //             text: "Winbar!".to_string(),
+            //             styles: StyleConfig {
+            //                 padding_x: 10,
+            //                 ..Default::default()
+            //             },
+            //         },
+            //     },
+            //     ComponentLayout {
+            //         location: ComponentLocation::LEFT,
+            //         component: ComponentType::DateTime {
+            //             format: "%F %r".to_string(),
+            //             styles: StyleConfig {
+            //                 padding_x: 10,
+            //                 ..Default::default()
+            //             },
+            //         },
+            //     },
+            // ],
+            layouts: Vec::new(),
         }
     }
 }
@@ -223,13 +176,37 @@ impl From<StyleConfig> for StyleOptions {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct ComponentConfig {
-    pub location: ComponentLocation,
-    pub component: ComponentData,
+pub struct ComponentLayout {
+    /// The unique id of this config
+    pub id: String,
+    pub components: Vec<ComponentData>,
 }
 
 #[derive(Serialize, Deserialize)]
-pub enum ComponentData {
+pub struct ComponentData {
+    pub location: ComponentLocation,
+    pub component: ComponentType,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub enum ComponentLocation {
+    Left,
+    Middle,
+    Right,
+}
+
+impl From<ComponentLocation> for status_bar::ComponentLocation {
+    fn from(value: ComponentLocation) -> Self {
+        match value {
+            ComponentLocation::Left => Self::Left,
+            ComponentLocation::Middle => Self::Middle,
+            ComponentLocation::Right => Self::Right,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum ComponentType {
     StaticText {
         text: String,
         styles: StyleConfig,
@@ -246,7 +223,7 @@ pub enum ComponentData {
     },
 }
 
-impl ComponentData {
+impl ComponentType {
     pub fn to_component(&self) -> Arc<dyn Component + Sync + Send> {
         match self {
             Self::StaticText { text, styles } => Arc::new(StaticTextComponent::new(

@@ -7,12 +7,12 @@ use std::{
     thread,
 };
 
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, bail, Context};
 use clap::Parser;
 use cli::WinbarCli;
-use component_impl::manager::{ComponentLocation, ComponentManager};
 use config::Config;
 use lazy_static::lazy_static;
+use status_bar::{ComponentLayout, StatusBar};
 use tokio::runtime;
 use tracing::instrument;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
@@ -34,41 +34,19 @@ pub mod component_impl;
 pub mod config;
 pub mod container;
 pub mod server;
+pub mod status_bar;
 
 // runtime variables
 static SERVER_PORT: AtomicI32 = AtomicI32::new(DEFAULT_PORT);
 
 lazy_static! {
-    static ref WINBAR_HWND: Arc<Mutex<HWND>> = Arc::new(Mutex::new(HWND(0)));
-    static ref COMPONENT_MANAGER: Arc<Mutex<ComponentManager>> =
-        Arc::new(Mutex::new(ComponentManager::new()));
+    static ref STATUS_BARS: Arc<Mutex<Vec<StatusBar>>> = Arc::new(Mutex::new(Vec::new()));
     static ref PLUGIN_MANAGER: Arc<Mutex<PluginManager>> =
         Arc::new(Mutex::new(PluginManager::new()));
 }
 
 // config variables
-static WIDTH: AtomicI32 = AtomicI32::new(2560);
-static HEIGHT: AtomicI32 = AtomicI32::new(25);
-static POSITION_X: AtomicI32 = AtomicI32::new(0);
-static POSITION_Y: AtomicI32 = AtomicI32::new(0);
-static COMPONENT_GAP: AtomicI32 = AtomicI32::new(10);
-static DEFAULT_FONT_SIZE: AtomicI32 = AtomicI32::new(18);
-
 lazy_static! {
-    static ref STATUS_BAR_BG_COLOR: Arc<Mutex<Color>> = Arc::new(Mutex::new(Color::Transparent));
-    static ref DEFAULT_BG_COLOR: Arc<Mutex<Color>> = Arc::new(Mutex::new(Color::Rgb {
-        r: 23,
-        g: 23,
-        b: 23,
-    }));
-    static ref DEFAULT_FG_COLOR: Arc<Mutex<Color>> = Arc::new(Mutex::new(Color::Rgb {
-        r: 33,
-        g: 181,
-        b: 80,
-    }));
-    // Segoe UI Variable is the default windows font
-    static ref DEFAULT_FONT: Arc<Mutex<String>> =
-        Arc::new(Mutex::new("Segoe UI Variable".to_string()));
     static ref PLUGIN_DIR: Arc<Mutex<PathBuf>> = Arc::new(Mutex::new(PathBuf::new()));
 }
 
@@ -85,11 +63,11 @@ pub fn gen_config(path: &PathBuf) {
 }
 
 #[instrument]
-pub fn read_config() -> anyhow::Result<Vec<(ComponentLocation, Arc<dyn Component + Send + Sync>)>> {
+pub fn read_config() -> anyhow::Result<Config> {
     let cli = WinbarCli::parse();
     if cli.generate_config {
         gen_config(&cli.config_path);
-        return Ok(Vec::new());
+        return Ok(Config::default());
     }
 
     let config = Config::read(&cli.config_path)?;
@@ -99,11 +77,7 @@ pub fn read_config() -> anyhow::Result<Vec<(ComponentLocation, Arc<dyn Component
 
     tracing::info!("Processing components from config");
 
-    Ok(config
-        .components
-        .iter()
-        .map(|c| (c.location, c.component.to_component()))
-        .collect())
+    Ok(config)
 }
 
 fn main() -> anyhow::Result<()> {
@@ -114,7 +88,7 @@ fn main() -> anyhow::Result<()> {
         .init();
 
     tracing::info!("Reading config");
-    let components = read_config()?;
+    let config = read_config()?;
 
     tracing::info!("Starting GDI+");
     let token = WindowsApi::startup_gdiplus()?;
@@ -125,32 +99,59 @@ fn main() -> anyhow::Result<()> {
             .with_context(|| "Could not set console ctrl handler")?;
     }
 
-    tracing::info!("Initializing window");
-    let status_bar_bg_color = {
-        let color = STATUS_BAR_BG_COLOR
-            .lock()
-            .map_err(|e| anyhow!("Could not obtain status bar bg color lock: {}", e))?;
+    // tracing::info!("Initializing window");
+    // let status_bar_bg_color = {
+    //     let color = STATUS_BAR_BG_COLOR
+    //         .lock()
+    //         .map_err(|e| anyhow!("Could not obtain status bar bg color lock: {}", e))?;
 
-        color.clone()
-    };
-    let winbar_hwnd = container::create_window(status_bar_bg_color);
+    //     color.clone()
+    // };
+    // let winbar_hwnd = container::create_window(status_bar_bg_color);
 
-    {
-        let mut hwnd = WINBAR_HWND
-            .lock()
-            .map_err(|e| anyhow!("Could not obtain winbar hwnd lock: {}", e))?;
-        *hwnd = winbar_hwnd;
-    }
+    // {
+    //     let mut hwnd = WINBAR_HWND
+    //         .lock()
+    //         .map_err(|e| anyhow!("Could not obtain winbar hwnd lock: {}", e))?;
+    //     *hwnd = winbar_hwnd;
+    // }
 
     let (send, recv) = mpsc::channel::<WinbarAction>();
     let winbar_ctx = WinbarContext::new(send);
 
-    tracing::info!("Starting components");
+    tracing::info!("Processing config status bars");
     {
-        let mut manager = COMPONENT_MANAGER.lock().unwrap();
-        components.iter().for_each(|(loc, c)| {
-            manager.add(*loc, c.clone(), winbar_ctx.clone());
-        });
+        let mut status_bars = STATUS_BARS.lock().unwrap();
+        for sb in config.status_bars.iter() {
+            match config.layouts.iter().find(|l| l.id == sb.layout_id) {
+                Some(target_layout) => {
+                    let layout = target_layout
+                        .components
+                        .iter()
+                        .map(|c| ComponentLayout {
+                            location: c.location.into(),
+                            component: c.component.to_component(),
+                        })
+                        .collect();
+
+                    status_bars.push(StatusBar::new(
+                        sb.x,
+                        sb.y,
+                        sb.width,
+                        sb.height,
+                        sb.component_gap,
+                        layout,
+                    ));
+                }
+                None => bail!("Could not find layout id {}", sb.layout_id),
+            }
+        }
+    }
+
+    tracing::info!("Starting status bars");
+    {
+        let status_bars = STATUS_BARS.lock().unwrap();
+        status_bars.iter().for_each(|sb| sb.start());
     }
 
     tracing::info!("Starting server");
@@ -178,9 +179,9 @@ fn main() -> anyhow::Result<()> {
     });
 
     tracing::info!("Starting window listener");
-    // this is blocking; we handle process termination below and through messages received on the
-    // mspc channel
-    container::listen(winbar_hwnd, recv);
+    // // this is blocking; we handle process termination below and through messages received on the
+    // // mspc channel
+    // container::listen(winbar_hwnd, recv);
 
     // SHUTDOWN LOGIC
     tracing::info!("Shutting down GDI+");
@@ -194,8 +195,8 @@ fn main() -> anyhow::Result<()> {
 pub extern "system" fn ctrl_handler(ctrltype: u32) -> BOOL {
     match ctrltype {
         CTRL_C_EVENT => {
-            let hwnd = WINBAR_HWND.lock().unwrap();
-            WindowsApi::send_window_shutdown_msg(*hwnd);
+            // let hwnd = WINBAR_HWND.lock().unwrap();
+            // WindowsApi::send_window_shutdown_msg(*hwnd);
 
             true.into()
         }

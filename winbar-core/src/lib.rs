@@ -88,5 +88,5 @@ pub trait Component {
     fn create_window(&self) -> HWND;
 
     /// Start any logic related to the component (e.g., a task to UpdateDraw).
-    fn start(&self, ctx: WinbarContext, hwnd: HWND);
+    fn start(&self, hwnd: HWND);
 }
