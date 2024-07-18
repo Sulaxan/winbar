@@ -1,5 +1,9 @@
 use std::{
-    ffi::{c_char, CStr}, mem::{size_of}, sync::atomic::{AtomicBool, AtomicI32, Ordering}, thread, time::Duration
+    ffi::{c_char, CStr},
+    mem::size_of,
+    sync::atomic::{AtomicBool, AtomicI32, Ordering},
+    thread,
+    time::Duration,
 };
 
 use winbar_core::{
@@ -119,12 +123,9 @@ pub extern "C" fn stop(_id: ComponentId) {
 #[no_mangle]
 pub extern "C" fn handle_event(event: WindowEvent) -> EventResult {
     return match event.msg_code {
-        WM_MOUSEFIRST => {
-
-            EventResult {
-                action: EventAction::Handled,
-                result: 0,
-            }
+        WM_MOUSEFIRST => EventResult {
+            action: EventAction::Handled,
+            result: 0,
         },
         WM_MOUSELEAVE => {
             HOVER.store(false, Ordering::SeqCst);
