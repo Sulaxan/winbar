@@ -8,10 +8,7 @@ use winbar_core::{
 };
 
 use crate::{
-    component_impl::{
-        datetime::DateTimeComponent, plugin::PluginComponent, static_text::StaticTextComponent,
-    },
-    status_bar, PLUGIN_DIR, PLUGIN_MANAGER,
+    component_impl::static_text::StaticTextComponent, status_bar, PLUGIN_DIR, PLUGIN_MANAGER,
 };
 
 use self::color::ColorConfig;
@@ -46,17 +43,6 @@ pub struct StatusBarConfig {
     /// The background color of the status bar
     #[serde(deserialize_with = "color::parse_string_or_color_config")]
     pub status_bar_bg_color: ColorConfig,
-    /// The default background color of components
-    #[serde(deserialize_with = "color::parse_string_or_color_config")]
-    pub default_component_bg_color: ColorConfig,
-    /// The default foreground color of components
-    #[serde(deserialize_with = "color::parse_string_or_color_config")]
-    pub default_component_fg_color: ColorConfig,
-    /// The default font of components
-    pub default_font: String,
-    /// The default font size of components
-    #[serde(default = "default_font_size")]
-    pub default_font_size: i32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -230,30 +216,31 @@ impl ComponentType {
                 text.to_string(),
                 styles.clone().into(),
             )),
-            Self::DateTime { format, styles } => Arc::new(DateTimeComponent::new(
-                format.to_string(),
-                styles.clone().into(),
-            )),
-            Self::Plugin { id, styles, other } => {
-                let mut manager = PLUGIN_MANAGER.lock().unwrap();
-                let plugin_dir = PLUGIN_DIR.lock().unwrap();
-                let path = plugin_dir.join(format!("{}.dll", id));
-                if !path.is_file() {
-                    panic!(
-                        "Plugin id {} is not a valid plugin in directory {}, ({})",
-                        id,
-                        plugin_dir.to_str().unwrap(),
-                        path.to_str().unwrap()
-                    );
-                }
+            // Self::DateTime { format, styles } => Arc::new(DateTimeComponent::new(
+            //     format.to_string(),
+            //     styles.clone().into(),
+            // )),
+            // Self::Plugin { id, styles, other } => {
+            //     let mut manager = PLUGIN_MANAGER.lock().unwrap();
+            //     let plugin_dir = PLUGIN_DIR.lock().unwrap();
+            //     let path = plugin_dir.join(format!("{}.dll", id));
+            //     if !path.is_file() {
+            //         panic!(
+            //             "Plugin id {} is not a valid plugin in directory {}, ({})",
+            //             id,
+            //             plugin_dir.to_str().unwrap(),
+            //             path.to_str().unwrap()
+            //         );
+            //     }
 
-                let plugin = manager.load(path.to_str().unwrap()).unwrap();
+            //     let plugin = manager.load(path.to_str().unwrap()).unwrap();
 
-                let component = PluginComponent::new(plugin, styles.clone().into());
-                component.load_config(other).unwrap();
+            //     let component = PluginComponent::new(plugin, styles.clone().into());
+            //     component.load_config(other).unwrap();
 
-                Arc::new(component)
-            }
+            //     Arc::new(component)
+            // }
+            _ => unimplemented!("not implemented"),
         }
     }
 }

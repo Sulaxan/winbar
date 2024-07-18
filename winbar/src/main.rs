@@ -1,10 +1,11 @@
 use std::{
     path::PathBuf,
     sync::{
-        atomic::{AtomicI32, Ordering},
+        atomic::{AtomicBool, AtomicI32, Ordering},
         mpsc, Arc, Mutex,
     },
     thread,
+    time::Duration,
 };
 
 use anyhow::{anyhow, bail, Context};
@@ -32,12 +33,13 @@ use crate::server::WinbarServer;
 pub mod cli;
 pub mod component_impl;
 pub mod config;
-pub mod container;
+// pub mod container;
 pub mod server;
 pub mod status_bar;
 
 // runtime variables
 static SERVER_PORT: AtomicI32 = AtomicI32::new(DEFAULT_PORT);
+static SHOULD_EXIT: AtomicBool = AtomicBool::new(false);
 
 lazy_static! {
     static ref STATUS_BARS: Arc<Mutex<Vec<StatusBar>>> = Arc::new(Mutex::new(Vec::new()));
@@ -150,8 +152,8 @@ fn main() -> anyhow::Result<()> {
 
     tracing::info!("Starting status bars");
     {
-        let status_bars = STATUS_BARS.lock().unwrap();
-        status_bars.iter().for_each(|sb| sb.start());
+        let mut status_bars = STATUS_BARS.lock().unwrap();
+        status_bars.iter_mut().for_each(|sb| sb.start());
     }
 
     tracing::info!("Starting server");
@@ -179,6 +181,18 @@ fn main() -> anyhow::Result<()> {
     });
 
     tracing::info!("Starting window listener");
+    loop {
+        if SHOULD_EXIT.load(Ordering::SeqCst) {
+            break;
+        }
+
+        {
+            let mut sb = STATUS_BARS.lock().unwrap();
+            sb.iter_mut().for_each(|s| s.update_locations());
+        }
+
+        thread::sleep(Duration::from_secs(2));
+    }
     // // this is blocking; we handle process termination below and through messages received on the
     // // mspc channel
     // container::listen(winbar_hwnd, recv);
@@ -197,6 +211,7 @@ pub extern "system" fn ctrl_handler(ctrltype: u32) -> BOOL {
         CTRL_C_EVENT => {
             // let hwnd = WINBAR_HWND.lock().unwrap();
             // WindowsApi::send_window_shutdown_msg(*hwnd);
+            SHOULD_EXIT.store(true, Ordering::SeqCst);
 
             true.into()
         }

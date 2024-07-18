@@ -4,10 +4,12 @@ use std::{
 };
 
 use tracing::instrument;
-use winbar_core::{color::Color, Component};
+use winbar_core::{color::Color, util::rect::Rect, Component};
 use windows::Win32::{
     Foundation::{HWND, RECT},
-    UI::WindowsAndMessaging::{GetWindowRect, SetWindowPos, HWND_BOTTOM, SWP_NOSIZE},
+    UI::WindowsAndMessaging::{
+        GetWindowRect, MoveWindow, SetWindowPos, HWND_BOTTOM, SWP_ASYNCWINDOWPOS, SWP_NOSIZE,
+    },
 };
 
 #[derive(Clone, PartialEq)]
@@ -60,29 +62,31 @@ impl StatusBar {
     }
 
     pub fn start(&mut self) {
-        let component_windows = self.component_windows.clone();
-
         self.layout.iter().for_each(|l| {
+            let component_windows = self.component_windows.clone();
             let component = l.component.clone();
             let location = l.location.clone();
+            let sb_rect = Rect {
+                x: self.x,
+                y: self.y,
+                width: self.width,
+                height: self.height,
+            };
 
             thread::spawn(move || {
-                let hwnd = component.create_window();
+                let hwnd = component.create_window(sb_rect);
                 {
                     let mut cw = component_windows.lock().unwrap();
                     cw.push(ComponentWindow { hwnd, location })
                 }
-
                 component.start(hwnd);
             });
         });
-
-        self.update_locations();
     }
 
     #[instrument(level = "trace", skip(self))]
     pub fn update_locations(&mut self) {
-        let mut curr_loc_x = 0;
+        let mut curr_loc_x = self.x;
         let mut rect = RECT::default();
 
         let component_windows = self.component_windows.lock().unwrap();
@@ -98,7 +102,7 @@ impl StatusBar {
                 let component_width = rect.right - rect.left;
 
                 unsafe {
-                    SetWindowPos(c.hwnd, HWND_BOTTOM, rect.left, rect.top, 0, 0, SWP_NOSIZE);
+                    MoveWindow(c.hwnd, curr_loc_x, self.y, rect.right, rect.bottom, false).unwrap();
                 }
                 curr_loc_x += component_width + self.component_gap;
             });
@@ -115,7 +119,15 @@ impl StatusBar {
                 let component_width = rect.right - rect.left;
 
                 unsafe {
-                    SetWindowPos(c.hwnd, HWND_BOTTOM, rect.left, rect.top, 0, 0, SWP_NOSIZE);
+                    MoveWindow(
+                        c.hwnd,
+                        curr_loc_x - rect.right,
+                        self.y,
+                        rect.right,
+                        rect.bottom,
+                        false,
+                    )
+                    .unwrap();
                 }
                 curr_loc_x -= component_width + self.component_gap;
             });
@@ -147,6 +159,7 @@ impl StatusBar {
         };
 
         // we multiply by 1 less gap since it's in between the components
+        // FIXME: for some reason the middle component width changes...
         curr_loc_x =
             self.width / 2 - (total_width + (self.component_gap - 1) * total_components) / 2;
         component_windows
@@ -159,7 +172,17 @@ impl StatusBar {
                 let component_width = rect.right - rect.left;
 
                 unsafe {
-                    SetWindowPos(c.hwnd, HWND_BOTTOM, rect.left, rect.top, 0, 0, SWP_NOSIZE);
+                    println!("{} {}", total_components, rect.right - rect.left);
+                    MoveWindow(c.hwnd, curr_loc_x, self.y, rect.right, rect.bottom, false).unwrap();
+                    // let _ = SetWindowPos(
+                    //     c.hwnd,
+                    //     HWND_BOTTOM,
+                    //     curr_loc_x,
+                    //     self.y,
+                    //     0,
+                    //     0,
+                    //     SWP_NOSIZE | SWP_ASYNCWINDOWPOS,
+                    // );
                 }
                 curr_loc_x += component_width + self.component_gap;
             });
