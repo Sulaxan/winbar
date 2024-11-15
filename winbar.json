@@ -28,8 +28,6 @@
         "StaticText": {
           "text": "Winbar!",
           "styles": {
-            "bg_color": "Default",
-            "fg_color": "Default",
             "border_style": "Square",
             "font": null,
             "font_size": null,
@@ -44,8 +42,6 @@
         "DateTime": {
           "format": "%F %r",
           "styles": {
-            "bg_color": "Default",
-            "fg_color": "Default",
             "border_style": "Square",
             "font": null,
             "font_size": null,
