@@ -4,7 +4,7 @@
   "position_x": 0,
   "position_y": 0,
   "component_gap": 10,
-  "status_bar_bg_color": "Transparent",
+  "status_bar_bg_color": "Transparent()",
   "default_component_bg_color": {
     "Rgb": {
       "r": 23,
@@ -28,8 +28,8 @@
         "StaticText": {
           "text": "Winbar!",
           "styles": {
-            "bg_color": null,
-            "fg_color": null,
+            "bg_color": "Default",
+            "fg_color": "Default",
             "border_style": "Square",
             "font": null,
             "font_size": null,
@@ -44,8 +44,8 @@
         "DateTime": {
           "format": "%F %r",
           "styles": {
-            "bg_color": null,
-            "fg_color": null,
+            "bg_color": "Default",
+            "fg_color": "Default",
             "border_style": "Square",
             "font": null,
             "font_size": null,
